@@ -1,0 +1,89 @@
+:root,
+[data-theme="dark"] {
+    --ui-sidebar: #252c3d;
+    --ui-panel: #31384b;
+    --ui-panel-dark: #343c4e;
+
+    --ui-border: #3b4357;
+    --ui-border-light: #485166;
+    --ui-border-active: #657087;
+
+    --ui-text: #f4f6fb;
+    --ui-text-muted: #9ca3b5;
+    --ui-text-disabled: #6e7689;
+
+    --ui-button-hover: #41495c;
+    --ui-accent: #19b6a5;
+
+    --ui-control: #252c3d;
+    --ui-control-hover: #343c4e;
+    --ui-control-active: #41495c;
+    --ui-control-text: #f4f6fb;
+    --ui-control-border: #485166;
+
+    --ui-menu: #252c3d;
+    --ui-menu-hover: #343c4e;
+    --ui-menu-text: #f4f6fb;
+
+    color-scheme: dark;
+}
+
+[data-theme="light"] {
+    --ui-sidebar: #ffffff;
+    --ui-panel: #f7f8fa;
+    --ui-panel-dark: #eef1f4;
+
+    --ui-border: #e0e4e8;
+    --ui-border-light: #ccd2d8;
+    --ui-border-active: #9ca6b1;
+
+    --ui-text: #1d2733;
+    --ui-text-muted: #6b7480;
+    --ui-text-disabled: #a6adb5;
+
+    --ui-button-hover: #e8ebef;
+    --ui-accent: #159b8d;
+
+    --ui-control: #ffffff;
+    --ui-control-hover: #f3f4f6;
+    --ui-control-active: #e5e7eb;
+    --ui-control-text: #252c3d;
+    --ui-control-border: #d7dce2;
+
+    --ui-menu: #ffffff;
+    --ui-menu-hover: #f3f4f6;
+    --ui-menu-text: #252c3d;
+
+    color-scheme: light;
+}
+
+html,
+body,
+#root {
+    width: 100%;
+    height: 100%;
+    margin: 0;
+}
+
+html {
+    font-family:
+        Inter,
+        -apple-system,
+        BlinkMacSystemFont,
+        "Segoe UI",
+        sans-serif;
+}
+
+body {
+    overflow: hidden;
+}
+
+* {
+    box-sizing: border-box;
+}
+
+button,
+input,
+select {
+    font: inherit;
+}
