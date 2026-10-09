@@ -4,6 +4,8 @@ import { useTranslation } from "react-i18next";
 import { ui } from "../../theme/tokens";
 
 import { useMapController } from "./useMapController";
+import { usePointSources } from "../point-sources/usePointSources";
+import { PlumeLegend } from "./PlumeLegend";
 
 const LEGENDS = {
     daily: [
@@ -28,6 +30,12 @@ const LEGENDS = {
 export function MapLegend() {
     const { t } = useTranslation();
     const { activeLegendStyle, activeMethaneLayer } = useMapController();
+
+    const { enabled, selectedPlume } = usePointSources();
+
+    if (enabled && selectedPlume) {
+        return <PlumeLegend plume={selectedPlume} />;
+    }
 
     if (!activeMethaneLayer) {
         return null;

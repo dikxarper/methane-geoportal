@@ -16,9 +16,15 @@ import {
 } from "./adminBoundaries";
 
 import {
+    createInfrastructureMapLayers,
+    type InfrastructureMapLayers,
+} from "./infrastructureLayers";
+
+import {
     MapContext,
     type ActiveMethaneLayer,
     type AdministrativeLayersOptions,
+    type InfrastructureLayersOptions,
     type LegendStyle,
     type MethaneAnnualLayerOptions,
     type S5PLayerOptions,
@@ -49,6 +55,12 @@ const DEFAULT_ADMINISTRATIVE_LAYERS_OPTIONS: AdministrativeLayersOptions = {
     districtsOpacity: 1,
 };
 
+const DEFAULT_INFRASTRUCTURE_OPTIONS: InfrastructureLayersOptions = {
+    oilGasInfrastructure: false,
+    oilGasPipelines: false,
+    landfills: false,
+};
+
 export function MapProvider({ children }: { children: ReactNode }) {
     const mapRef = useRef<Map | null>(null);
     const s5pLayerRef = useRef<TileLayer<XYZ> | null>(null);
@@ -58,9 +70,16 @@ export function MapProvider({ children }: { children: ReactNode }) {
         DEFAULT_METHANE_ANNUAL_OPTIONS,
     );
     const administrativeLayersRef = useRef<AdministrativeBoundaryLayers | null>(null);
-    const administrativeLayersRequestRef = useRef<Promise<AdministrativeBoundaryLayers> | null>(null);
+    const administrativeLayersRequestRef = useRef<Promise<AdministrativeBoundaryLayers> | null>(
+        null,
+    );
     const administrativeOptionsRef = useRef<AdministrativeLayersOptions>(
         DEFAULT_ADMINISTRATIVE_LAYERS_OPTIONS,
+    );
+
+    const infrastructureLayersRef = useRef<InfrastructureMapLayers | null>(null);
+    const infrastructureOptionsRef = useRef<InfrastructureLayersOptions>(
+        DEFAULT_INFRASTRUCTURE_OPTIONS,
     );
 
     const { theme } = useAppTheme();
@@ -162,45 +181,42 @@ export function MapProvider({ children }: { children: ReactNode }) {
         }
     }, []);
 
-    const applyMethaneAnnualLayer = useCallback(
-        (map: Map, options: MethaneAnnualLayerOptions) => {
-            const { uid, visible, opacity } = options;
+    const applyMethaneAnnualLayer = useCallback((map: Map, options: MethaneAnnualLayerOptions) => {
+        const { uid, visible, opacity } = options;
 
-            if (!uid) {
-                methaneAnnualLayerRef.current?.setVisible(false);
-                return;
-            }
+        if (!uid) {
+            methaneAnnualLayerRef.current?.setVisible(false);
+            return;
+        }
 
-            const normalizedOpacity = Math.max(0, Math.min(1, opacity));
-            let layer = methaneAnnualLayerRef.current;
+        const normalizedOpacity = Math.max(0, Math.min(1, opacity));
+        let layer = methaneAnnualLayerRef.current;
 
-            if (!layer) {
-                layer = new TileLayer({
-                    source: new XYZ({ url: getMethaneAnnualTileUrl(uid) }),
-                    visible,
-                    opacity: normalizedOpacity,
-                    zIndex: 90,
-                    properties: {
-                        layerId: "methane-annual",
-                        methaneAnnualUid: uid,
-                    },
-                });
+        if (!layer) {
+            layer = new TileLayer({
+                source: new XYZ({ url: getMethaneAnnualTileUrl(uid) }),
+                visible,
+                opacity: normalizedOpacity,
+                zIndex: 90,
+                properties: {
+                    layerId: "methane-annual",
+                    methaneAnnualUid: uid,
+                },
+            });
 
-                methaneAnnualLayerRef.current = layer;
-                map.addLayer(layer);
-                return;
-            }
+            methaneAnnualLayerRef.current = layer;
+            map.addLayer(layer);
+            return;
+        }
 
-            if (layer.get("methaneAnnualUid") !== uid) {
-                layer.setSource(new XYZ({ url: getMethaneAnnualTileUrl(uid) }));
-                layer.set("methaneAnnualUid", uid);
-            }
+        if (layer.get("methaneAnnualUid") !== uid) {
+            layer.setSource(new XYZ({ url: getMethaneAnnualTileUrl(uid) }));
+            layer.set("methaneAnnualUid", uid);
+        }
 
-            layer.setVisible(visible);
-            layer.setOpacity(normalizedOpacity);
-        },
-        [],
-    );
+        layer.setVisible(visible);
+        layer.setOpacity(normalizedOpacity);
+    }, []);
 
     const applyAdministrativeLayers = useCallback(
         (map: Map, options: AdministrativeLayersOptions) => {
@@ -213,7 +229,9 @@ export function MapProvider({ children }: { children: ReactNode }) {
                 layers.regions.setVisible(layerOptions.regionsVisible);
                 layers.regions.setOpacity(Math.max(0, Math.min(1, layerOptions.regionsOpacity)));
                 layers.districts.setVisible(layerOptions.districtsVisible);
-                layers.districts.setOpacity(Math.max(0, Math.min(1, layerOptions.districtsOpacity)));
+                layers.districts.setOpacity(
+                    Math.max(0, Math.min(1, layerOptions.districtsOpacity)),
+                );
             };
 
             if (administrativeLayersRef.current) {
@@ -246,6 +264,37 @@ export function MapProvider({ children }: { children: ReactNode }) {
         [],
     );
 
+    const applyInfrastructureLayers = useCallback(
+        (map: Map, options: InfrastructureLayersOptions) => {
+            let layers = infrastructureLayersRef.current;
+
+            if (!layers) {
+                const hasEnabledLayers =
+                    options.oilGasInfrastructure || options.oilGasPipelines || options.landfills;
+
+                if (!hasEnabledLayers) {
+                    return;
+                }
+
+                layers = createInfrastructureMapLayers();
+                infrastructureLayersRef.current = layers;
+
+                map.addLayer(layers.oilGasInfrastructure);
+                map.addLayer(layers.oilGasPipelines);
+                map.addLayer(layers.landfills);
+            }
+
+            layers.setOilGasCategories(options.oilGasCategories);
+
+            layers.oilGasInfrastructure.setVisible(options.oilGasInfrastructure);
+
+            layers.oilGasPipelines.setVisible(options.oilGasPipelines);
+
+            layers.landfills.setVisible(options.landfills);
+        },
+        [],
+    );
+
     const registerMap = useCallback(
         (map: Map | null) => {
             mapRef.current = map;
@@ -254,6 +303,7 @@ export function MapProvider({ children }: { children: ReactNode }) {
                 s5pLayerRef.current = null;
                 methaneAnnualLayerRef.current = null;
                 administrativeLayersRef.current = null;
+                infrastructureLayersRef.current = null;
                 return;
             }
 
@@ -262,9 +312,11 @@ export function MapProvider({ children }: { children: ReactNode }) {
             applyS5PLayer(map, s5pOptionsRef.current);
             applyMethaneAnnualLayer(map, methaneAnnualOptionsRef.current);
             applyAdministrativeLayers(map, administrativeOptionsRef.current);
+            applyInfrastructureLayers(map, infrastructureOptionsRef.current);
         },
         [
             applyAdministrativeLayers,
+            applyInfrastructureLayers,
             applyBaseMapVisibility,
             applyMethaneAnnualLayer,
             applyS5PLayer,
@@ -399,6 +451,17 @@ export function MapProvider({ children }: { children: ReactNode }) {
         [applyAdministrativeLayers],
     );
 
+    const updateInfrastructureLayers = useCallback(
+        (options: InfrastructureLayersOptions) => {
+            infrastructureOptionsRef.current = options;
+
+            if (mapRef.current) {
+                applyInfrastructureLayers(mapRef.current, options);
+            }
+        },
+        [applyInfrastructureLayers],
+    );
+
     return (
         <MapContext.Provider
             value={{
@@ -421,6 +484,8 @@ export function MapProvider({ children }: { children: ReactNode }) {
                 activeLegendStyle,
 
                 updateAdministrativeLayers,
+
+                updateInfrastructureLayers,
             }}
         >
             {children}

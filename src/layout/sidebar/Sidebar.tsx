@@ -4,6 +4,7 @@ import { Box, Flex } from "@chakra-ui/react";
 import { AreaFluxPanel } from "../../features/area-flux/AreaFluxPanel";
 import { AdminLayersPanel } from "../../features/admin-layers/AdminLayersPanel";
 import { InfrastructurePanel } from "../../features/infrastructure/InfrastructurePanel";
+import { PointSourcesPanel } from "../../features/point-sources/PointSourcesPanel";
 import { ui } from "../../theme/tokens";
 
 import { SidebarHeader } from "./SidebarHeader";
@@ -37,6 +38,10 @@ export function Sidebar() {
                 >
                     <Box display={activeTab === "area" ? "block" : "none"}>
                         <AreaFluxPanel />
+                    </Box>
+
+                    <Box display={activeTab === "point" ? "block" : "none"}>
+                        <PointSourcesPanel active={activeTab === "point"} />
                     </Box>
 
                     <Box display={activeTab === "infrastructure" ? "block" : "none"}>

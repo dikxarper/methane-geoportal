@@ -1,46 +1,37 @@
-import { Factory, Flame, Fuel, Landmark, Network, Ship, Trash2, Waves } from "lucide-react";
-
-export const infrastructureLayers = [
+export const OIL_GAS_CATEGORIES = [
     {
-        id: "oil-gas-pipelines",
-        label: "Нефте- и газопроводы",
-        icon: Network,
+        id: "NATURAL GAS FLARING DETECTIONS",
+        labelKey: "infrastructure.categories.flaring",
+        color: "#F59E44",
     },
     {
-        id: "refineries",
-        label: "Нефтеперерабатывающие заводы",
-        icon: Factory,
+        id: "OFFSHORE PLATFORMS",
+        labelKey: "infrastructure.categories.offshore",
+        color: "#4E97DF",
     },
     {
-        id: "processing-facilities",
-        label: "Газоперерабатывающие объекты",
-        icon: Landmark,
+        id: "CRUDE OIL REFINERIES",
+        labelKey: "infrastructure.categories.refineries",
+        color: "#E2C054",
     },
     {
-        id: "lng-facilities",
-        label: "СПГ-объекты",
-        icon: Fuel,
+        id: "PETROLEUM TERMINALS",
+        labelKey: "infrastructure.categories.terminals",
+        color: "#9D83DC",
     },
     {
-        id: "gas-flaring",
-        label: "Факельное сжигание газа",
-        icon: Flame,
+        id: "GATHERING AND PROCESSING",
+        labelKey: "infrastructure.categories.processing",
+        color: "#31A797",
     },
     {
-        id: "offshore-platforms",
-        label: "Морские нефтегазовые платформы",
-        icon: Waves,
-    },
-    {
-        id: "oil-terminals",
-        label: "Нефтяные терминалы",
-        icon: Ship,
-    },
-    {
-        id: "landfills",
-        label: "Полигоны ТБО",
-        icon: Trash2,
+        id: "LNG FACILITIES",
+        labelKey: "infrastructure.categories.lng",
+        color: "#D8679A",
     },
 ] as const;
 
-export type InfrastructureLayerId = (typeof infrastructureLayers)[number]["id"];
+export type OilGasCategory = (typeof OIL_GAS_CATEGORIES)[number]["id"];
+
+export const PIPELINE_COLOR = "#ED8347";
+export const LANDFILL_COLOR = "#AE88DC";

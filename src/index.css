@@ -87,3 +87,14 @@ input,
 select {
     font: inherit;
 }
+
+/* Атрибуция подложки OpenLayers — всегда слева снизу */
+.geo-map-shell .ol-attribution,
+.geo-map-shell .ol-attribution.ol-uncollapsible,
+.geo-map-shell--details .ol-attribution,
+.geo-map-shell--details .ol-attribution.ol-uncollapsible {
+    left: 12px !important;
+    right: auto !important;
+    bottom: 12px !important;
+    transition: none;
+}

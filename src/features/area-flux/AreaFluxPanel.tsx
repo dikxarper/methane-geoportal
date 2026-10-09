@@ -141,8 +141,9 @@ export function AreaFluxPanel() {
             try {
                 const data = await getMethaneAnnualRecords();
                 const records = data
-                    .filter((record): record is MethaneAnnualRecord & { year: number } =>
-                        typeof record.year === "number",
+                    .filter(
+                        (record): record is MethaneAnnualRecord & { year: number } =>
+                            typeof record.year === "number",
                     )
                     .sort((first, second) => second.year - first.year);
 
@@ -266,13 +267,7 @@ export function AreaFluxPanel() {
             opacity: annualOpacity / 100,
             legendStyle: areaFluxConfig.annualMethane.legendStyle,
         });
-    }, [
-        annualEnabled,
-        annualOpacity,
-        annualYear,
-        selectedAnnualUid,
-        updateMethaneAnnualLayer,
-    ]);
+    }, [annualEnabled, annualOpacity, annualYear, selectedAnnualUid, updateMethaneAnnualLayer]);
 
     return (
         <Box>
@@ -341,27 +336,32 @@ export function AreaFluxPanel() {
 
                     {!annualLoading && annualRecords.length > 0 && (
                         <Box>
-                            <Text mb="8px" fontSize="12px" fontWeight="600" color={ui.colors.text}>
+                            <Text mb="6px" fontSize="11px" fontWeight="500" color={ui.colors.text}>
                                 {t("areaFlux.annualMethane.year")}
                             </Text>
 
                             <select
                                 value={annualYear ?? ""}
-                                disabled={!annualEnabled}
                                 onChange={(event) => setAnnualYear(Number(event.target.value))}
                                 style={{
                                     width: "100%",
-                                    height: "36px",
-                                    padding: "0 10px",
+                                    height: "32px",
+                                    padding: "0 9px",
+                                    fontSize: "12px",
+                                    fontWeight: 400,
+                                    lineHeight: 1.3,
                                     border: `1px solid ${ui.colors.borderLight}`,
                                     borderRadius: "6px",
                                     background: ui.colors.panelDark,
                                     color: ui.colors.text,
-                                    opacity: annualEnabled ? 1 : 0.55,
                                 }}
                             >
                                 {annualRecords.map((record) => (
-                                    <option key={record.year} value={record.year}>
+                                    <option
+                                        key={record.year}
+                                        value={record.year}
+                                        style={{ fontSize: "12px" }}
+                                    >
                                         {record.year}
                                     </option>
                                 ))}

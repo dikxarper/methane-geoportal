@@ -1,16 +1,24 @@
+import { useState } from "react";
 import { Flex, Slider, Text } from "@chakra-ui/react";
 import { useTranslation } from "react-i18next";
-
 import { ui } from "../../theme/tokens";
 
 interface OpacitySliderProps {
     value: number;
     onChange: (value: number) => void;
+    onPreview?: (value: number) => void;
     disabled?: boolean;
 }
 
-export function OpacitySlider({ value, onChange, disabled = false }: OpacitySliderProps) {
+export function OpacitySlider({
+    value,
+    onChange,
+    onPreview,
+    disabled = false,
+}: OpacitySliderProps) {
     const { t } = useTranslation();
+    const [draft, setDraft] = useState<number | null>(null);
+    const current = draft ?? value;
 
     return (
         <Flex direction="column" gap="7px" width="100%" opacity={disabled ? 0.45 : 1}>
@@ -18,9 +26,8 @@ export function OpacitySlider({ value, onChange, disabled = false }: OpacitySlid
                 <Text fontSize="11px" color={ui.colors.textMuted}>
                     {t("common.opacity")}
                 </Text>
-
                 <Text fontSize="11px" color={ui.colors.textMuted}>
-                    {value}%
+                    {current}%
                 </Text>
             </Flex>
 
@@ -28,21 +35,32 @@ export function OpacitySlider({ value, onChange, disabled = false }: OpacitySlid
                 min={0}
                 max={100}
                 step={1}
-                value={[value]}
+                value={[current]}
                 disabled={disabled}
-                onValueChange={(details) => {
-                    const nextValue = details.value[0];
+                onValueChange={({ value: values }) => {
+                    const next = values[0];
+                    if (next === undefined) return;
 
-                    if (nextValue !== undefined) {
-                        onChange(nextValue);
+                    if (onPreview) {
+                        setDraft(next);
+                        onPreview(next);
+                    } else {
+                        onChange(next);
                     }
+                }}
+                onValueChangeEnd={({ value: values }) => {
+                    if (!onPreview) return;
+
+                    const next = values[0] ?? current;
+                    onPreview(next);
+                    onChange(next);
+                    setDraft(null);
                 }}
             >
                 <Slider.Control>
                     <Slider.Track height="4px" bg={ui.colors.borderLight} borderRadius="999px">
                         <Slider.Range bg={ui.colors.accent} />
                     </Slider.Track>
-
                     <Slider.Thumb
                         index={0}
                         width="12px"

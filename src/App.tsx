@@ -3,6 +3,7 @@ import { Navigate, Route, Routes } from "react-router-dom";
 import { useAuth } from "./auth/AuthContext";
 
 import { MapProvider } from "./features/map/MapProvider";
+import { PointSourcesProvider } from "./features/point-sources/PointSourcesProvider";
 
 import { AuthLayout } from "./layout/AuthLayout";
 import { MapLayout } from "./layout/MapLayout";
@@ -23,7 +24,9 @@ function ProtectedMap() {
 
     return (
         <MapProvider>
-            <MapLayout />
+            <PointSourcesProvider>
+                <MapLayout />
+            </PointSourcesProvider>
         </MapProvider>
     );
 }

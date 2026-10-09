@@ -2,6 +2,7 @@ import { createContext } from "react";
 import type Map from "ol/Map";
 
 import type { BaseMapId } from "./config";
+import type { OilGasCategory } from "../infrastructure/config";
 
 export type LegendStyle = "blocks" | "gradient";
 
@@ -30,6 +31,15 @@ export interface AdministrativeLayersOptions {
     districtsOpacity: number;
 }
 
+export interface InfrastructureLayersOptions {
+    oilGasInfrastructure: boolean;
+
+    oilGasCategories?: Partial<Record<OilGasCategory, boolean>>;
+
+    oilGasPipelines: boolean;
+    landfills: boolean;
+}
+
 export type ActiveMethaneLayer = "daily" | "annual" | null;
 
 export interface MapController {
@@ -52,6 +62,8 @@ export interface MapController {
     activeLegendStyle: LegendStyle;
 
     updateAdministrativeLayers: (options: AdministrativeLayersOptions) => void;
+
+    updateInfrastructureLayers: (options: InfrastructureLayersOptions) => void;
 }
 
 export const MapContext = createContext<MapController | null>(null);

@@ -8,13 +8,11 @@ import { OpacitySlider } from "./OpacitySlider";
 interface LayerCardProps {
     title: string;
     description?: string;
-
     enabled: boolean;
     onEnabledChange: (value: boolean) => void;
-
     opacity: number;
     onOpacityChange: (value: number) => void;
-
+    onOpacityPreview?: (value: number) => void;
     children?: ReactNode;
 }
 
@@ -25,6 +23,7 @@ export function LayerCard({
     onEnabledChange,
     opacity,
     onOpacityChange,
+    onOpacityPreview,
     children,
 }: LayerCardProps) {
     return (
@@ -52,7 +51,12 @@ export function LayerCard({
             </Flex>
 
             <Box px="10px" pb="10px">
-                <OpacitySlider value={opacity} onChange={onOpacityChange} disabled={!enabled} />
+                <OpacitySlider
+                    value={opacity}
+                    onChange={onOpacityChange}
+                    onPreview={onOpacityPreview}
+                    disabled={!enabled}
+                />
 
                 {children && <Box mt="12px">{children}</Box>}
             </Box>

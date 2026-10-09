@@ -9,8 +9,8 @@ import { AuthProvider } from "./auth/AuthContext";
 import "./i18n";
 import { AppThemeProvider } from "./theme/AppThemeProvider";
 
-import "./index.css";
 import "ol/ol.css";
+import "./index.css";
 
 createRoot(document.getElementById("root")!).render(
     <StrictMode>
