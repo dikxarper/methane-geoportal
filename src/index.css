@@ -98,3 +98,18 @@ select {
     bottom: 12px !important;
     transition: none;
 }
+
+/* Сортировка наблюдений: светлая и тёмная темы */
+
+[data-theme="dark"] .plume-sort-select {
+    color-scheme: dark;
+}
+
+[data-theme="light"] .plume-sort-select {
+    color-scheme: light;
+}
+
+.plume-sort-select option {
+    background-color: var(--ui-panel);
+    color: var(--ui-text);
+}

@@ -274,23 +274,6 @@ export function PlumeTimelineFilters({ filters }: PlumeTimelineFiltersProps) {
                         </Text>
                     )}
                 </Box>
-
-                <Flex justify="flex-end">
-                    <Button
-                        type="button"
-                        variant="ghost"
-                        size="xs"
-                        height="26px"
-                        fontSize="10px"
-                        color={ui.colors.textMuted}
-                        onClick={() => {
-                            filters.reset();
-                            setOpenCalendar(null);
-                        }}
-                    >
-                        {t("pointSources.filters.reset")}
-                    </Button>
-                </Flex>
             </Flex>
         </Box>
     );

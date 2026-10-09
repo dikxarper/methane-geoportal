@@ -62,7 +62,7 @@ export function AreaFluxPanel() {
     const { t } = useTranslation();
     const { updateS5PLayer, updateMethaneAnnualLayer } = useMapController();
 
-    const [enabled, setEnabled] = useStoredState("s5p-daily-enabled", true);
+    const [enabled, setEnabled] = useStoredState("s5p-daily-enabled", false);
 
     const [opacity, setOpacity] = useStoredState("s5p-daily-opacity", 100);
 

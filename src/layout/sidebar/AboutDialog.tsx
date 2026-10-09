@@ -414,15 +414,16 @@ export function AboutDialog() {
                                         {copy.developerDescription}
                                     </Text>
 
-                                    <Box
-                                        as="a"
-                                        href={LAB_URL}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
+                                    <Button
+                                        asChild
+                                        variant="plain"
                                         display="inline-flex"
                                         alignItems="center"
                                         gap="6px"
                                         mt="12px"
+                                        height="auto"
+                                        minWidth="auto"
+                                        padding="0"
                                         color={ui.colors.accent}
                                         fontSize="12px"
                                         fontWeight="600"
@@ -430,10 +431,16 @@ export function AboutDialog() {
                                             textDecoration: "underline",
                                         }}
                                     >
-                                        {copy.laboratoryLink}
+                                        <a
+                                            href={LAB_URL}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                        >
+                                            {copy.laboratoryLink}
 
-                                        <ArrowUpRight size={14} />
-                                    </Box>
+                                            <ArrowUpRight size={14} />
+                                        </a>
+                                    </Button>
                                 </Box>
                             </Box>
 

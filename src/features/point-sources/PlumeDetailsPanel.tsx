@@ -191,6 +191,7 @@ function GroupContent({ groupId, items, selectedPlume, onSelect }: GroupContentP
                         <Flex gap="6px" justify="space-between" align="center">
                             <NativeSelect.Root flex="1" size="xs" minWidth="0">
                                 <NativeSelect.Field
+                                    className="plume-sort-select"
                                     height="28px"
                                     fontSize="10px"
                                     fontWeight="400"
@@ -253,12 +254,31 @@ function GroupContent({ groupId, items, selectedPlume, onSelect }: GroupContentP
                             </Collapsible.Content>
                         </Collapsible.Root>
 
-                        <Flex align="center" justify="space-between">
+                        {/* Количество результатов и сброс фильтров */}
+                        <Flex align="center" justify="space-between" minHeight="26px">
                             <Text fontSize="10px" color={ui.colors.textMuted}>
                                 {t("pointSources.filters.found", {
                                     count: filters.filteredItems.length,
                                 })}
                             </Text>
+
+                            <Button
+                                type="button"
+                                variant="ghost"
+                                size="xs"
+                                height="24px"
+                                px="6px"
+                                fontSize="10px"
+                                fontWeight="400"
+                                color={ui.colors.textMuted}
+                                _hover={{
+                                    bg: ui.colors.controlHover,
+                                    color: ui.colors.text,
+                                }}
+                                onClick={filters.reset}
+                            >
+                                {t("pointSources.filters.reset")}
+                            </Button>
                         </Flex>
 
                         {/* Хронология */}

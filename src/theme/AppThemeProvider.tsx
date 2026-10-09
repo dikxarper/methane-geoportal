@@ -11,7 +11,7 @@ function getInitialTheme(): AppTheme {
         return savedTheme;
     }
 
-    return "dark";
+    return "light";
 }
 
 export function AppThemeProvider({ children }: { children: ReactNode }) {

@@ -1,5 +1,4 @@
-import { Box } from "@chakra-ui/react";
-
+import { Box, chakra } from "@chakra-ui/react";
 import { ui } from "../../theme/tokens";
 
 interface LayerToggleProps {
@@ -10,23 +9,39 @@ interface LayerToggleProps {
 
 export function LayerToggle({ checked, onChange, disabled = false }: LayerToggleProps) {
     return (
-        <Box
-            as="button"
+        <chakra.button
             type="button"
+            role="switch"
+            aria-checked={checked}
+            disabled={disabled}
             position="relative"
+            display="inline-flex"
+            alignItems="center"
+            flexShrink={0}
             width="38px"
-            height="20px"
             minWidth="38px"
-            borderRadius="999px"
+            height="20px"
+            minHeight="20px"
+            m="0"
+            p="0"
+            appearance="none"
+            border="none"
+            borderRadius="full"
+            outline="none"
+            boxShadow="none"
             bg={checked ? ui.colors.accent : "#50586B"}
             opacity={disabled ? 0.45 : 1}
             cursor={disabled ? "not-allowed" : "pointer"}
-            transition="background 0.15s ease"
-            onClick={() => {
-                if (!disabled) {
-                    onChange(!checked);
-                }
+            transition="background-color 150ms ease"
+            _hover={{
+                bg: disabled ? undefined : checked ? ui.colors.accent : "#606A7F",
             }}
+            _focusVisible={{
+                outline: "2px solid",
+                outlineColor: ui.colors.accent,
+                outlineOffset: "3px",
+            }}
+            onClick={() => onChange(!checked)}
         >
             <Box
                 position="absolute"
@@ -36,8 +51,9 @@ export function LayerToggle({ checked, onChange, disabled = false }: LayerToggle
                 height="14px"
                 borderRadius="full"
                 bg="white"
-                transition="left 0.15s ease"
+                pointerEvents="none"
+                transition="left 150ms ease"
             />
-        </Box>
+        </chakra.button>
     );
 }
