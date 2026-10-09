@@ -1,5 +1,5 @@
 import { Box, Button, Flex, Grid, Text } from "@chakra-ui/react";
-import { Check, MapPin, TriangleAlert } from "lucide-react";
+import { TriangleAlert } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 import { ui } from "../../theme/tokens";
@@ -18,8 +18,16 @@ interface PlumeTimelineItemProps {
 }
 
 function getDateParts(value: string | null, locale: string) {
-    const empty = { dayMonth: "—", year: "—", time: "—", zone: "" };
-    if (!value) return empty;
+    const empty = {
+        dayMonth: "—",
+        year: "—",
+        time: "—",
+        zone: "",
+    };
+
+    if (!value) {
+        return empty;
+    }
 
     let normalized = value.trim();
     let isUtc = false;
@@ -35,12 +43,17 @@ function getDateParts(value: string | null, locale: string) {
 
     const match = normalized.match(/^(\d{4})-(\d{2})-(\d{2})(?:[T ](\d{2}):(\d{2})(?::(\d{2}))?)?/);
 
-    if (!match) return empty;
+    if (!match) {
+        return empty;
+    }
 
     const [, year, month, day, hours, minutes, seconds] = match;
+
     const date = new Date(Date.UTC(Number(year), Number(month) - 1, Number(day)));
 
-    if (Number.isNaN(date.getTime())) return empty;
+    if (Number.isNaN(date.getTime())) {
+        return empty;
+    }
 
     const monthLabel = new Intl.DateTimeFormat(locale, {
         month: "short",
@@ -60,6 +73,7 @@ function getDateParts(value: string | null, locale: string) {
 
 export function PlumeTimelineItem({ observation, selected, onClick }: PlumeTimelineItemProps) {
     const { t, i18n } = useTranslation();
+
     const locale = i18n.resolvedLanguage?.startsWith("en") ? "en-US" : "ru-RU";
 
     const date = getDateParts(observation.observedAt, locale);
@@ -69,6 +83,7 @@ export function PlumeTimelineItem({ observation, selected, onClick }: PlumeTimel
         /[T ]00:00(?::00)?(?:\.0+)?(?:Z|[+-]00:?00)?$/i.test(observation.observedAt?.trim() ?? "");
 
     const displayTime = orbioMidnightPlaceholder ? "—" : date.time;
+
     const displayZone = orbioMidnightPlaceholder ? "" : date.zone;
 
     const sourceName = getSatelliteName(observation);
@@ -78,7 +93,10 @@ export function PlumeTimelineItem({ observation, selected, onClick }: PlumeTimel
     const uncertaintyText = uncertainty
         ? uncertainty.low === uncertainty.high
             ? `±${formatCompact(uncertainty.low, locale)}`
-            : `−${formatCompact(uncertainty.low, locale)}/+${formatCompact(uncertainty.high, locale)}`
+            : `−${formatCompact(uncertainty.low, locale)}/+${formatCompact(
+                  uncertainty.high,
+                  locale,
+              )}`
         : null;
 
     return (
@@ -106,7 +124,10 @@ export function PlumeTimelineItem({ observation, selected, onClick }: PlumeTimel
                 onClick={onClick}
                 _hover={{ bg: ui.colors.buttonHover }}
                 _active={{ bg: "transparent" }}
-                _pressed={{ bg: "transparent", color: ui.colors.text }}
+                _pressed={{
+                    bg: "transparent",
+                    color: ui.colors.text,
+                }}
                 _focusVisible={{
                     outline: "2px solid",
                     outlineColor: ui.colors.borderActive,
@@ -115,7 +136,7 @@ export function PlumeTimelineItem({ observation, selected, onClick }: PlumeTimel
             >
                 <Grid
                     width="100%"
-                    templateColumns="62px 65px minmax(0, 1fr) 14px"
+                    templateColumns="62px 65px minmax(0, 1fr)"
                     alignItems="center"
                     gap="6px"
                 >
@@ -128,6 +149,7 @@ export function PlumeTimelineItem({ observation, selected, onClick }: PlumeTimel
                         <Text fontSize="11px" fontWeight="700" whiteSpace="nowrap">
                             {date.dayMonth}
                         </Text>
+
                         <Text fontSize="10px" color={ui.colors.textMuted}>
                             {date.year}
                         </Text>
@@ -142,6 +164,7 @@ export function PlumeTimelineItem({ observation, selected, onClick }: PlumeTimel
                         <Text fontSize="10px" fontWeight="600" whiteSpace="nowrap">
                             {displayTime}
                         </Text>
+
                         <Text fontSize="10px" color={ui.colors.textMuted}>
                             {displayZone || " "}
                         </Text>
@@ -159,6 +182,7 @@ export function PlumeTimelineItem({ observation, selected, onClick }: PlumeTimel
                                     >
                                         {formatCompact(rate, locale)}
                                     </Text>
+
                                     <Text
                                         fontSize="9px"
                                         color={ui.colors.textMuted}
@@ -186,6 +210,7 @@ export function PlumeTimelineItem({ observation, selected, onClick }: PlumeTimel
                         ) : (
                             <Flex gap="4px" align="center">
                                 <TriangleAlert size={11} />
+
                                 <Text fontSize="10px" fontWeight="600" lineHeight="1.3">
                                     {t("pointSources.timeline.notQuantified")}
                                 </Text>
@@ -206,8 +231,6 @@ export function PlumeTimelineItem({ observation, selected, onClick }: PlumeTimel
                             {sourceName}
                         </Text>
                     </Box>
-
-                    {selected ? <Check size={14} /> : <MapPin size={13} />}
                 </Grid>
             </Button>
         </Box>

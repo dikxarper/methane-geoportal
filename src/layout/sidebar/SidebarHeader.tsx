@@ -1,7 +1,8 @@
-import { Box, Flex } from "@chakra-ui/react";
+import { Flex } from "@chakra-ui/react";
 
-import { ui } from "../../theme/tokens";
 import { BrandLogo } from "../../components/ui/BrandLogo";
+import { ui } from "../../theme/tokens";
+import { AboutDialog } from "./AboutDialog";
 
 export function SidebarHeader() {
     return (
@@ -14,22 +15,9 @@ export function SidebarHeader() {
             borderBottom="1px solid"
             borderColor={ui.colors.border}
         >
-            <Flex align="center" gap="8px">
-                <BrandLogo variant="full" height="26px" />
-            </Flex>
+            <BrandLogo variant="full" height="26px" />
 
-            <Box
-                px="12px"
-                py="8px"
-                border="1px solid"
-                borderColor={ui.colors.borderLight}
-                borderRadius={ui.radius.md}
-                bg={ui.colors.panelDark}
-                fontSize="12px"
-                fontWeight="600"
-            >
-                О нас
-            </Box>
+            <AboutDialog />
         </Flex>
     );
 }

@@ -64,7 +64,6 @@ export function PlumeTrendPlot({
     }
 
     const hx = hovered ? layout.x(hovered, hoveredIndex) : 0;
-
     const hy = hovered ? layout.y(hovered.value) : 0;
 
     const tipX = hx < layout.width * 0.28 ? "0" : hx > layout.width * 0.73 ? "-100%" : "-50%";
@@ -137,8 +136,10 @@ export function PlumeTrendPlot({
                             x={layout.left - 7}
                             y={tick.y + 4}
                             textAnchor="end"
-                            fontSize="10"
-                            fill={ui.colors.textMuted}
+                            style={{
+                                fontSize: "9px",
+                                fill: ui.colors.textMuted,
+                            }}
                         >
                             {tick.label}
                         </text>
@@ -214,8 +215,10 @@ export function PlumeTrendPlot({
                         x={tick.x}
                         y={layout.height - 4}
                         textAnchor={tick.anchor}
-                        fontSize="100"
-                        fill={ui.colors.textMuted}
+                        style={{
+                            fontSize: "9px",
+                            fill: ui.colors.textMuted,
+                        }}
                     >
                         {tick.label}
                     </text>

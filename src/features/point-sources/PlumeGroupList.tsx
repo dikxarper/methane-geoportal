@@ -7,8 +7,9 @@ import type { PlumeGroup } from "../../api/plumePoints";
 import { ui } from "../../theme/tokens";
 import { usePointSources } from "./usePointSources";
 
-const FIRST_PAGE = 10;
+const FIRST_PAGE = 15;
 const NEXT_PAGE = 5;
+const MIN_LOADER_TIME_MS = 850;
 
 interface PageStatus {
     key: string;
@@ -36,8 +37,12 @@ export function PlumeGroupList() {
         const key = `${offset}:${retry}`;
         const limit = offset === 0 ? FIRST_PAGE : NEXT_PAGE;
 
-        void getPlumeGroupPage(limit, offset, controller.signal)
-            .then((page) => {
+        const minLoaderTime = new Promise<void>((resolve) => {
+            window.setTimeout(resolve, offset === 0 ? 0 : MIN_LOADER_TIME_MS);
+        });
+
+        void Promise.all([getPlumeGroupPage(limit, offset, controller.signal), minLoaderTime])
+            .then(([page]) => {
                 if (controller.signal.aborted) return;
 
                 setGroups((previous) => {
@@ -57,6 +62,7 @@ export function PlumeGroupList() {
                 if (controller.signal.aborted) return;
 
                 console.error("[PlumeGroupList] Load failed:", reason);
+
                 setStatus({ key, error: true });
             });
 
@@ -68,28 +74,15 @@ export function PlumeGroupList() {
 
         if (!target || loading || error || !hasMore) return;
 
-        let timer: number | null = null;
-
         const observer = new IntersectionObserver(
             (entries) => {
-                const visible = entries[0]?.isIntersecting ?? false;
+                if (!entries[0]?.isIntersecting) return;
 
-                if (!visible) {
-                    if (timer !== null) {
-                        window.clearTimeout(timer);
-                        timer = null;
-                    }
-                    return;
-                }
+                // Сразу запрашиваем следующую страницу.
+                // loading становится true, loader появляется.
+                observer.disconnect();
 
-                if (timer !== null) return;
-
-                timer = window.setTimeout(() => {
-                    timer = null;
-                    observer.disconnect();
-
-                    setOffset((current) => current + (current === 0 ? FIRST_PAGE : NEXT_PAGE));
-                }, 450);
+                setOffset((current) => current + (current === 0 ? FIRST_PAGE : NEXT_PAGE));
             },
             {
                 root: null,
@@ -100,13 +93,7 @@ export function PlumeGroupList() {
 
         observer.observe(target);
 
-        return () => {
-            observer.disconnect();
-
-            if (timer !== null) {
-                window.clearTimeout(timer);
-            }
-        };
+        return () => observer.disconnect();
     }, [loading, error, hasMore, offset]);
 
     return (
@@ -161,8 +148,9 @@ export function PlumeGroupList() {
             })}
 
             {loading && (
-                <Flex py="12px" align="center" justify="center" gap="7px">
+                <Flex py="12px" align="center" justify="center" gap="7px" aria-live="polite">
                     <Spinner size="xs" />
+
                     <Text fontSize="11px" color={ui.colors.textMuted}>
                         {t("common.loading")}
                     </Text>

@@ -1,5 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
-
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Box, Text } from "@chakra-ui/react";
 import { useTranslation } from "react-i18next";
 
@@ -19,6 +18,7 @@ import {
 import { AppCalendar } from "../../components/ui/AppCalendar";
 import { LayerCard } from "../../components/ui/LayerCard";
 import { PanelHeader } from "../../components/ui/PanelHeader";
+import { useStoredState } from "../../hooks/useStoredState";
 import { ui } from "../../theme/tokens";
 
 import { useMapController } from "../map/useMapController";
@@ -43,7 +43,7 @@ function getMonthRange(date: string) {
     };
 }
 
-function mergeRecords(current: S5PRecord[], incoming: S5PRecord[]) {
+function mergeRecords(current: S5PRecord[], incoming: S5PRecord[]): S5PRecord[] {
     const result = new Map<string, S5PRecord>();
 
     for (const record of [...current, ...incoming]) {
@@ -62,11 +62,14 @@ export function AreaFluxPanel() {
     const { t } = useTranslation();
     const { updateS5PLayer, updateMethaneAnnualLayer } = useMapController();
 
-    const [enabled, setEnabled] = useState(true);
-    const [opacity, setOpacity] = useState(100);
+    const [enabled, setEnabled] = useStoredState("s5p-daily-enabled", true);
+
+    const [opacity, setOpacity] = useStoredState("s5p-daily-opacity", 100);
 
     const [records, setRecords] = useState<S5PRecord[]>([]);
-    const [selectedDate, setSelectedDate] = useState<string | null>(null);
+
+    const [selectedDate, setSelectedDate] = useStoredState<string | null>("s5p-daily-date", null);
+
     const [minDate, setMinDate] = useState<string | null>(null);
     const [maxDate, setMaxDate] = useState<string | null>(null);
 
@@ -74,13 +77,21 @@ export function AreaFluxPanel() {
     const [monthLoading, setMonthLoading] = useState(false);
     const [error, setError] = useState<AreaFluxError>(null);
 
-    const [annualEnabled, setAnnualEnabled] = useState(false);
-    const [annualOpacity, setAnnualOpacity] = useState(100);
+    const [annualEnabled, setAnnualEnabled] = useStoredState("s5p-annual-enabled", false);
+
+    const [annualOpacity, setAnnualOpacity] = useStoredState("s5p-annual-opacity", 100);
+
     const [annualRecords, setAnnualRecords] = useState<MethaneAnnualRecord[]>([]);
-    const [annualYear, setAnnualYear] = useState<number | null>(null);
+
+    const [annualYear, setAnnualYear] = useStoredState<number | null>("s5p-annual-year", null);
+
     const [annualLoading, setAnnualLoading] = useState(true);
+
     const [annualError, setAnnualError] = useState<MethaneAnnualError>(null);
 
+    const initialSelectedDateRef = useRef(selectedDate);
+
+    // Загружаем границы дат и восстанавливаем выбранный месяц.
     useEffect(() => {
         let cancelled = false;
 
@@ -91,28 +102,49 @@ export function AreaFluxPanel() {
             try {
                 const bounds = await getS5PDateBounds();
 
-                if (cancelled) {
-                    return;
-                }
+                if (cancelled) return;
 
                 if (!bounds) {
                     setError("areaFlux.sentinel5p.notFound");
                     return;
                 }
 
-                const monthRange = getMonthRange(bounds.maxDate);
+                const lastMonth = getMonthRange(bounds.maxDate);
 
-                const monthRecords = await getS5PRecordsForRange(monthRange.from, monthRange.to);
+                const monthRecords = await getS5PRecordsForRange(lastMonth.from, lastMonth.to);
 
-                if (cancelled) {
-                    return;
+                if (cancelled) return;
+
+                const storedDate = initialSelectedDateRef.current;
+
+                const restoredDate =
+                    storedDate && storedDate >= bounds.minDate && storedDate <= bounds.maxDate
+                        ? storedDate
+                        : bounds.maxDate;
+
+                let allRecords = mergeRecords([bounds.minRecord, bounds.maxRecord], monthRecords);
+
+                if (restoredDate.slice(0, 7) !== bounds.maxDate.slice(0, 7)) {
+                    const selectedMonth = getMonthRange(restoredDate);
+
+                    try {
+                        const historical = await getS5PRecordsForRange(
+                            selectedMonth.from,
+                            selectedMonth.to,
+                        );
+
+                        allRecords = mergeRecords(allRecords, historical);
+                    } catch {
+                        // Сохраняем дату. Месяц можно загрузить повторно.
+                    }
                 }
 
-                setRecords(mergeRecords([bounds.minRecord, bounds.maxRecord], monthRecords));
+                if (cancelled) return;
 
+                setRecords(allRecords);
                 setMinDate(bounds.minDate);
                 setMaxDate(bounds.maxDate);
-                setSelectedDate(bounds.maxDate);
+                setSelectedDate(restoredDate);
             } catch {
                 if (!cancelled) {
                     setError("areaFlux.sentinel5p.loadError");
@@ -129,8 +161,9 @@ export function AreaFluxPanel() {
         return () => {
             cancelled = true;
         };
-    }, []);
+    }, [setSelectedDate]);
 
+    // Загружаем годовые записи.
     useEffect(() => {
         let cancelled = false;
 
@@ -140,18 +173,21 @@ export function AreaFluxPanel() {
 
             try {
                 const data = await getMethaneAnnualRecords();
+
                 const records = data
                     .filter(
-                        (record): record is MethaneAnnualRecord & { year: number } =>
-                            typeof record.year === "number",
+                        (
+                            record,
+                        ): record is MethaneAnnualRecord & {
+                            year: number;
+                        } => typeof record.year === "number",
                     )
                     .sort((first, second) => second.year - first.year);
 
-                if (cancelled) {
-                    return;
-                }
+                if (cancelled) return;
 
                 setAnnualRecords(records);
+
                 setAnnualYear((current) =>
                     current !== null && records.some((record) => record.year === current)
                         ? current
@@ -173,20 +209,17 @@ export function AreaFluxPanel() {
         return () => {
             cancelled = true;
         };
-    }, []);
+    }, [setAnnualYear]);
 
     const loadVisibleRange = useCallback(
         async (dateFrom: string, dateTo: string) => {
-            if (!minDate || !maxDate) {
-                return;
-            }
+            if (!minDate || !maxDate) return;
 
             const from = dateFrom < minDate ? minDate : dateFrom;
+
             const to = dateTo > maxDate ? maxDate : dateTo;
 
-            if (from > to) {
-                return;
-            }
+            if (from > to) return;
 
             setMonthLoading(true);
             setError(null);
@@ -204,20 +237,20 @@ export function AreaFluxPanel() {
         [minDate, maxDate],
     );
 
-    const availableDates = useMemo(() => {
-        return Array.from(
-            new Set(
-                records
-                    .map((record) => normalizeS5PDate(record.date))
-                    .filter((date): date is string => date !== null),
-            ),
-        ).sort();
-    }, [records]);
+    const availableDates = useMemo(
+        () =>
+            Array.from(
+                new Set(
+                    records
+                        .map((record) => normalizeS5PDate(record.date))
+                        .filter((date): date is string => date !== null),
+                ),
+            ).sort(),
+        [records],
+    );
 
     const selectedRecord = useMemo(() => {
-        if (!selectedDate) {
-            return null;
-        }
+        if (!selectedDate) return null;
 
         return records.find((record) => normalizeS5PDate(record.date) === selectedDate) ?? null;
     }, [records, selectedDate]);
@@ -360,7 +393,9 @@ export function AreaFluxPanel() {
                                     <option
                                         key={record.year}
                                         value={record.year}
-                                        style={{ fontSize: "12px" }}
+                                        style={{
+                                            fontSize: "12px",
+                                        }}
                                     >
                                         {record.year}
                                     </option>

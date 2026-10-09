@@ -1,22 +1,24 @@
-import { useEffect, useState } from "react";
-
+import { useEffect } from "react";
 import { Box } from "@chakra-ui/react";
 import { useTranslation } from "react-i18next";
 
 import { LayerCard } from "../../components/ui/LayerCard";
 import { PanelHeader } from "../../components/ui/PanelHeader";
+import { useStoredState } from "../../hooks/useStoredState";
 import { useMapController } from "../map/useMapController";
 
 export function AdminLayersPanel() {
     const { t } = useTranslation();
     const { updateAdministrativeLayers } = useMapController();
 
-    const [countryVisible, setCountryVisible] = useState(false);
-    const [countryOpacity, setCountryOpacity] = useState(100);
-    const [regionsVisible, setRegionsVisible] = useState(false);
-    const [regionsOpacity, setRegionsOpacity] = useState(100);
-    const [districtsVisible, setDistrictsVisible] = useState(false);
-    const [districtsOpacity, setDistrictsOpacity] = useState(100);
+    const [countryVisible, setCountryVisible] = useStoredState("admin-countryVisible", false);
+    const [countryOpacity, setCountryOpacity] = useStoredState("admin-countryOpacity", 100);
+
+    const [regionsVisible, setRegionsVisible] = useStoredState("admin-regionsVisible", false);
+    const [regionsOpacity, setRegionsOpacity] = useStoredState("admin-regionsOpacity", 100);
+
+    const [districtsVisible, setDistrictsVisible] = useStoredState("admin-districtsVisible", false);
+    const [districtsOpacity, setDistrictsOpacity] = useStoredState("admin-districtsOpacity", 100);
 
     useEffect(() => {
         updateAdministrativeLayers({

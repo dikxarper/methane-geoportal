@@ -37,6 +37,7 @@ export function PlumeLegend({ plume }: PlumeLegendProps) {
 
             <Text mt="3px" mb="9px" fontSize="10px" color={ui.colors.textMuted}>
                 {getSatelliteName(plume)}
+                {legend?.gas ? ` · ${legend.gas}` : ""}
                 {plume.observedAt ? ` · ${plume.observedAt.slice(0, 10)}` : ""}
             </Text>
 
@@ -52,7 +53,7 @@ export function PlumeLegend({ plume }: PlumeLegendProps) {
                                 </Text>
 
                                 <Text fontSize="10px" color={ui.colors.textMuted}>
-                                    {legend.max.toLocaleString()}
+                                    {legend.maxLabel ?? legend.max.toLocaleString()}
                                 </Text>
                             </Flex>
 

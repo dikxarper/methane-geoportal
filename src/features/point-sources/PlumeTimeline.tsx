@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState, type RefObject } from "react";
-import { Box, Flex } from "@chakra-ui/react";
+import { Box, Flex, Spinner, Text } from "@chakra-ui/react";
+import { useTranslation } from "react-i18next";
 
+import { ui } from "../../theme/tokens";
 import type { PlumeObservation } from "./types";
 import { PlumeTimelineItem } from "./PlumeTimelineItem";
 
@@ -12,9 +14,14 @@ interface PlumeTimelineProps {
 }
 
 const PAGE_SIZE = 10;
+const LOAD_DELAY_MS = 950;
 
 export function PlumeTimeline({ items, selectedKey, onSelect, scrollRootRef }: PlumeTimelineProps) {
+    const { t } = useTranslation();
+
     const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
+    const [loadingMore, setLoadingMore] = useState(false);
+
     const sentinelRef = useRef<HTMLDivElement | null>(null);
 
     useEffect(() => {
@@ -35,22 +42,28 @@ export function PlumeTimeline({ items, selectedKey, onSelect, scrollRootRef }: P
                     if (timer !== null) {
                         window.clearTimeout(timer);
                         timer = null;
+                        setLoadingMore(false);
                     }
+
                     return;
                 }
 
                 if (timer !== null) return;
+
+                setLoadingMore(true);
 
                 timer = window.setTimeout(() => {
                     timer = null;
                     observer.disconnect();
 
                     setVisibleCount((count) => Math.min(count + PAGE_SIZE, items.length));
-                }, 450);
+
+                    setLoadingMore(false);
+                }, LOAD_DELAY_MS);
             },
             {
                 root,
-                rootMargin: "0px 0px 16px 0px",
+                rootMargin: "0px 0px 8px 0px",
                 threshold: 0,
             },
         );
@@ -65,8 +78,9 @@ export function PlumeTimeline({ items, selectedKey, onSelect, scrollRootRef }: P
             }
         };
     }, [items.length, visibleCount, scrollRootRef]);
+
     return (
-        <Flex direction="column" gap="6px">
+        <Flex direction="column" gap="6px" pb="10px">
             {items.slice(0, visibleCount).map((observation) => (
                 <PlumeTimelineItem
                     key={observation.key}
@@ -77,7 +91,17 @@ export function PlumeTimeline({ items, selectedKey, onSelect, scrollRootRef }: P
             ))}
 
             {visibleCount < items.length && (
-                <Box ref={sentinelRef} height="2px" aria-hidden="true" />
+                <Box ref={sentinelRef} minHeight="26px" aria-live="polite">
+                    {loadingMore && (
+                        <Flex align="center" justify="center" gap="7px" py="8px">
+                            <Spinner size="xs" />
+
+                            <Text fontSize="10px" color={ui.colors.textMuted}>
+                                {t("common.loading")}
+                            </Text>
+                        </Flex>
+                    )}
+                </Box>
             )}
         </Flex>
     );

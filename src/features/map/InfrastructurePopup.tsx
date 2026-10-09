@@ -35,13 +35,14 @@ export function InfrastructurePopup({ selection, onClose }: InfrastructurePopupP
             ? category
                 ? t(category.labelKey)
                 : t("infrastructure.layers.oilGasInfrastructure")
-            : selection.kind === "pipeline"
-              ? t("infrastructure.layers.oilGasPipelines")
-              : t("infrastructure.layers.landfills");
+            : t("infrastructure.layers.landfills");
 
     const name = readText(properties.fac_name) ?? readText(properties.fac_type) ?? typeName;
 
-    const fields: Array<{ label: string; value: string | null }> =
+    const fields: Array<{
+        label: string;
+        value: string | null;
+    }> =
         selection.kind === "landfill"
             ? [
                   {

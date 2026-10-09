@@ -1,5 +1,6 @@
-import { Box, Flex } from "@chakra-ui/react";
-import { ChevronLeft, Cloud, Factory, MapPin, Map as MapIcon } from "lucide-react";
+import { Flex } from "@chakra-ui/react";
+import { Cloud, Factory, MapPin, Map as MapIcon } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 import { SidebarIconButton } from "../../components/ui/SidebarIconButton";
 import { ui } from "../../theme/tokens";
@@ -14,32 +15,33 @@ interface SidebarNavigationProps {
 const navigationItems = [
     {
         id: "area",
-        label: "Площадные потоки",
+        labelKey: "sidebar.areaFlux",
         icon: Cloud,
+        disabled: false,
     },
     {
         id: "point",
-        label: "Точечные источники",
+        labelKey: "sidebar.pointSources",
         icon: MapPin,
+        disabled: false,
     },
     {
         id: "infrastructure",
-        label: "Инфраструктура",
+        labelKey: "sidebar.infrastructure",
         icon: Factory,
+        disabled: false,
     },
     {
         id: "admin",
-        label: "Административные слои",
+        labelKey: "sidebar.admin",
         icon: MapIcon,
+        disabled: true,
     },
-] satisfies Array<{
-    id: SidebarTab;
-    label: string;
-    icon: typeof Cloud;
-    disabled?: boolean;
-}>;
+] as const;
 
 export function SidebarNavigation({ activeTab, onChange }: SidebarNavigationProps) {
+    const { t } = useTranslation();
+
     return (
         <Flex
             width={ui.sizes.navigationWidth}
@@ -55,18 +57,17 @@ export function SidebarNavigation({ activeTab, onChange }: SidebarNavigationProp
                     <SidebarIconButton
                         key={item.id}
                         icon={item.icon}
-                        label={item.label}
+                        label={t(item.labelKey)}
                         active={activeTab === item.id}
-                        onClick={() => onChange(item.id)}
+                        disabled={item.disabled}
+                        onClick={() => {
+                            if (!item.disabled) {
+                                onChange(item.id);
+                            }
+                        }}
                     />
                 ))}
             </Flex>
-
-            <Box flex="1" />
-
-            <Box mb="1px">
-                <SidebarIconButton icon={ChevronLeft} label="Свернуть панель" />
-            </Box>
         </Flex>
     );
 }

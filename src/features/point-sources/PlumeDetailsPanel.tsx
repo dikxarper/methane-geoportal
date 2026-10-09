@@ -1,10 +1,12 @@
 import { useEffect, useRef, useState } from "react";
-import { Box, Button, Flex, IconButton, NativeSelect, Text, Collapsible } from "@chakra-ui/react";
+import { Box, Button, Collapsible, Flex, IconButton, NativeSelect, Text } from "@chakra-ui/react";
 import { ChevronDown, ChevronUp, SlidersHorizontal, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 import { getPlumeObservations } from "../../api/plumeObservations";
+import { useStoredState } from "../../hooks/useStoredState";
 import { ui } from "../../theme/tokens";
+
 import type { PlumeObservationsResult, PlumeSource, PlumeObservation } from "./types";
 
 import { PlumeTimeline } from "./PlumeTimeline";
@@ -24,6 +26,7 @@ interface LoadState {
 }
 
 interface GroupContentProps {
+    groupId: string;
     items: PlumeObservation[];
     selectedPlume: PlumeObservation | null;
     onSelect: (plume: PlumeObservation) => void;
@@ -33,14 +36,16 @@ const observationCache = new Map<string, PlumeObservationsResult>();
 
 const SORT_OPTIONS: PlumeSort[] = ["newest", "oldest", "emissionDesc", "emissionAsc"];
 
-function GroupContent({ items, selectedPlume, onSelect }: GroupContentProps) {
+function GroupContent({ groupId, items, selectedPlume, onSelect }: GroupContentProps) {
     const { t } = useTranslation();
 
-    const [tab, setTab] = useState<PanelTab>("timeline");
-    const [filtersOpen, setFiltersOpen] = useState(false);
-    const [chartExpanded, setChartExpanded] = useState(true);
+    const [tab, setTab] = useStoredState<PanelTab>(`group-${groupId}-tab`, "timeline");
 
-    const filters = usePlumeFilters(items);
+    const [filtersOpen, setFiltersOpen] = useStoredState(`group-${groupId}-filters-open`, false);
+
+    const [chartExpanded, setChartExpanded] = useStoredState(`group-${groupId}-chart-open`, true);
+
+    const filters = usePlumeFilters(items, groupId);
     const scrollRootRef = useRef<HTMLDivElement | null>(null);
 
     const timelineKey = [
@@ -88,38 +93,37 @@ function GroupContent({ items, selectedPlume, onSelect }: GroupContentProps) {
 
     return (
         <Flex flex="1" minHeight="0" direction="column">
-            {/* График и статистика */}
+            {/* График */}
             <Box px="10px" pt="7px" flexShrink={0}>
                 <Flex align="center" justify="space-between" mb="2px">
                     <Text fontSize="11px" fontWeight="700" color={ui.colors.text}>
                         {t("pointSources.chart.title")}
                     </Text>
 
-                    <Flex align="center" gap="3px">
-                        <Button
-                            type="button"
-                            variant="plain"
-                            size="xs"
-                            height="24px"
-                            px="5px"
-                            gap="4px"
-                            fontSize="10px"
-                            color={ui.colors.textMuted}
-                            bg="transparent"
-                            _hover={{
-                                bg: ui.colors.controlHover,
-                                color: ui.colors.text,
-                            }}
-                            onClick={() => setChartExpanded((value) => !value)}
-                        >
-                            {t(
-                                chartExpanded
-                                    ? "pointSources.chart.collapse"
-                                    : "pointSources.chart.expand",
-                            )}
-                            {chartExpanded ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
-                        </Button>
-                    </Flex>
+                    <Button
+                        type="button"
+                        variant="plain"
+                        size="xs"
+                        height="24px"
+                        px="5px"
+                        gap="4px"
+                        fontSize="10px"
+                        color={ui.colors.textMuted}
+                        bg="transparent"
+                        _hover={{
+                            bg: ui.colors.controlHover,
+                            color: ui.colors.text,
+                        }}
+                        onClick={() => setChartExpanded((value) => !value)}
+                    >
+                        {t(
+                            chartExpanded
+                                ? "pointSources.chart.collapse"
+                                : "pointSources.chart.expand",
+                        )}
+
+                        {chartExpanded ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+                    </Button>
                 </Flex>
 
                 {chartExpanded && (
@@ -156,7 +160,9 @@ function GroupContent({ items, selectedPlume, onSelect }: GroupContentProps) {
                         borderBottomColor={tab === id ? ui.colors.accent : "transparent"}
                         fontSize="11px"
                         fontWeight={tab === id ? "600" : "400"}
-                        _hover={{ bg: ui.colors.controlHover }}
+                        _hover={{
+                            bg: ui.colors.controlHover,
+                        }}
                         onClick={() => setTab(id)}
                     >
                         {t(`pointSources.tabs.${id}`)}
@@ -164,7 +170,7 @@ function GroupContent({ items, selectedPlume, onSelect }: GroupContentProps) {
                 ))}
             </Flex>
 
-            {/* Прокручивается только содержимое вкладки */}
+            {/* Только вкладки прокручиваются */}
             <Box
                 ref={scrollRootRef}
                 flex="1"
@@ -181,7 +187,7 @@ function GroupContent({ items, selectedPlume, onSelect }: GroupContentProps) {
                     <PlumeDetailsView observation={selectedPlume} />
                 ) : (
                     <Flex direction="column" gap="9px">
-                        {/* Сортировка и фильтры */}
+                        {/* Сортировка */}
                         <Flex gap="6px" justify="space-between" align="center">
                             <NativeSelect.Root flex="1" size="xs" minWidth="0">
                                 <NativeSelect.Field
@@ -240,18 +246,13 @@ function GroupContent({ items, selectedPlume, onSelect }: GroupContentProps) {
                             </Button>
                         </Flex>
 
-                        {filtersOpen && (
-                            <Collapsible.Root open={filtersOpen}>
-                                <Collapsible.Content>
-                                    <PlumeTimelineFilters
-                                        key={filtersOpen ? "open" : "closed"}
-                                        filters={filters}
-                                    />
-                                </Collapsible.Content>
-                            </Collapsible.Root>
-                        )}
+                        {/* Не размонтируем блок при закрытии */}
+                        <Collapsible.Root open={filtersOpen} lazyMount unmountOnExit={false}>
+                            <Collapsible.Content>
+                                <PlumeTimelineFilters filters={filters} />
+                            </Collapsible.Content>
+                        </Collapsible.Root>
 
-                        {/* Количество результатов */}
                         <Flex align="center" justify="space-between">
                             <Text fontSize="10px" color={ui.colors.textMuted}>
                                 {t("pointSources.filters.found", {
@@ -294,6 +295,7 @@ export function PlumeDetailsPanel() {
         usePointSources();
 
     const [state, setState] = useState<LoadState | null>(null);
+
     const [retry, setRetry] = useState(0);
 
     const groupId = enabled && detailsOpen ? (selectedGroup?.id ?? null) : null;
@@ -334,7 +336,9 @@ export function PlumeDetailsPanel() {
                 });
             })
             .catch((reason: unknown) => {
-                if (controller.signal.aborted) return;
+                if (controller.signal.aborted) {
+                    return;
+                }
 
                 console.error("[PlumeDetails] Failed to load observations:", reason);
 
@@ -382,7 +386,6 @@ export function PlumeDetailsPanel() {
             boxShadow="0 6px 20px rgba(0, 0, 0, 0.25)"
             overflow="hidden"
         >
-            {/* Заголовок группировки */}
             <Flex
                 px="12px"
                 py="10px"
@@ -415,14 +418,15 @@ export function PlumeDetailsPanel() {
                     w="26px"
                     h="26px"
                     color={ui.colors.controlText}
-                    _hover={{ bg: ui.colors.controlHover }}
+                    _hover={{
+                        bg: ui.colors.controlHover,
+                    }}
                     onClick={closeDetails}
                 >
                     <X size={15} />
                 </IconButton>
             </Flex>
 
-            {/* Загрузка и ошибки */}
             {loading ? (
                 <Text px="10px" py="12px" fontSize="11px" color={ui.colors.textMuted}>
                     {t("pointSources.details.loading")}
@@ -461,6 +465,7 @@ export function PlumeDetailsPanel() {
 
                     <GroupContent
                         key={groupId}
+                        groupId={groupId}
                         items={result?.items ?? []}
                         selectedPlume={selectedPlume}
                         onSelect={selectPlume}

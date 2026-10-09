@@ -1,4 +1,6 @@
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
+
+import { useStoredState } from "../../hooks/useStoredState";
 import type { PlumeObservation } from "./types";
 import {
     getEmissionRate,
@@ -8,18 +10,27 @@ import {
 } from "./plumeDisplay";
 
 export type PlumeSort = "newest" | "oldest" | "emissionDesc" | "emissionAsc";
+
 export type DateMode = "single" | "range";
 
 const DATE_MIN = "1900-01-01";
 const DATE_MAX = "2100-12-31";
 
-export function usePlumeFilters(items: PlumeObservation[]) {
-    const [sort, setSort] = useState<PlumeSort>("newest");
-    const [satellites, setSatellites] = useState<SatelliteKind[]>([]);
-    const [dateMode, setDateMode] = useState<DateMode>("single");
-    const [singleDate, setSingleDate] = useState("");
-    const [dateFrom, setDateFrom] = useState("");
-    const [dateTo, setDateTo] = useState("");
+export function usePlumeFilters(items: PlumeObservation[], groupId: string) {
+    const [sort, setSort] = useStoredState<PlumeSort>(`group-${groupId}-sort`, "newest");
+
+    const [satellites, setSatellites] = useStoredState<SatelliteKind[]>(
+        `group-${groupId}-satellites`,
+        [],
+    );
+
+    const [dateMode, setDateMode] = useStoredState<DateMode>(`group-${groupId}-dateMode`, "single");
+
+    const [singleDate, setSingleDate] = useStoredState(`group-${groupId}-singleDate`, "");
+
+    const [dateFrom, setDateFrom] = useStoredState(`group-${groupId}-dateFrom`, "");
+
+    const [dateTo, setDateTo] = useStoredState(`group-${groupId}-dateTo`, "");
 
     const invalidDates = dateMode === "range" && Boolean(dateFrom && dateTo && dateFrom > dateTo);
 
@@ -27,7 +38,6 @@ export function usePlumeFilters(items: PlumeObservation[]) {
         Number(satellites.length > 0) +
         Number(dateMode === "single" ? Boolean(singleDate) : Boolean(dateFrom || dateTo));
 
-    // Даты, в которые есть наблюдения выбранных спутников.
     const availableDates = useMemo(
         () =>
             [
@@ -66,8 +76,13 @@ export function usePlumeFilters(items: PlumeObservation[]) {
                 }
 
                 if (dateMode === "range") {
-                    if (dateFrom && (!date || date < dateFrom)) return false;
-                    if (dateTo && (!date || date > dateTo)) return false;
+                    if (dateFrom && (!date || date < dateFrom)) {
+                        return false;
+                    }
+
+                    if (dateTo && (!date || date > dateTo)) {
+                        return false;
+                    }
                 }
 
                 return true;

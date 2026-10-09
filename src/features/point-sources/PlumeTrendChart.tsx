@@ -1,11 +1,11 @@
-import { useMemo, useState } from "react";
-import { Box, Button, Flex, Text, Portal, Tooltip } from "@chakra-ui/react";
+import { useMemo } from "react";
+import { Box, Button, Flex, Portal, Text, Tooltip } from "@chakra-ui/react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
+import { useStoredState } from "../../hooks/useStoredState";
 import { ui } from "../../theme/tokens";
 import type { PlumeObservation } from "./types";
-
 import { buildPlumeTrend, type TrendMode, type TrendPoint } from "./plumeTrendData";
 import { formatTrendValue, type TrendScaleMode } from "./plumeTrendScale";
 import { PlumeTrendPlot } from "./PlumeTrendPlot";
@@ -30,9 +30,11 @@ export function PlumeTrendChart({
 
     const locale = i18n.resolvedLanguage?.startsWith("en") ? "en-US" : "ru-RU";
 
-    const [mode, setMode] = useState<TrendMode>("period");
-    const [scale, setScale] = useState<TrendScaleMode>("linear");
-    const [daysBack, setDaysBack] = useState(0);
+    const [mode, setMode] = useStoredState<TrendMode>("trend-mode", "period");
+
+    const [scale, setScale] = useStoredState<TrendScaleMode>("trend-scale", "linear");
+
+    const [daysBack, setDaysBack] = useStoredState("trend-days-back", 0);
 
     const trend = useMemo(
         () => buildPlumeTrend(items, selectedSatellites, mode, locale),
@@ -105,6 +107,7 @@ export function PlumeTrendChart({
                 </Flex>
             </Flex>
 
+            {/* Статистика группировки */}
             <Flex mt="11px" gap="10px" align="flex-start">
                 <Box flex="1.3" minW="0">
                     <Flex align="baseline" gap="4px">
@@ -145,6 +148,7 @@ export function PlumeTrendChart({
                 </Box>
             </Flex>
 
+            {/* Масштаб и подписи */}
             <Flex mt="10px" align="center" justify="space-between" gap="8px">
                 <Text fontSize="10px" color={ui.colors.textMuted}>
                     {mode === "period" ? periodLabel : t("pointSources.chart.daysMode")}
@@ -175,7 +179,9 @@ export function PlumeTrendChart({
                                             active ? ui.colors.borderActive : ui.colors.borderLight
                                         }
                                         bg={active ? ui.colors.controlActive : ui.colors.panelDark}
-                                        _hover={{ bg: ui.colors.buttonHover }}
+                                        _hover={{
+                                            bg: ui.colors.buttonHover,
+                                        }}
                                         onClick={() => setScale(value)}
                                     >
                                         {t(
@@ -213,6 +219,7 @@ export function PlumeTrendChart({
                 onSelect={activate}
             />
 
+            {/* Навигация по дням */}
             {mode === "days" && length > 0 && (
                 <>
                     {length > DAYS_PER_PAGE && (

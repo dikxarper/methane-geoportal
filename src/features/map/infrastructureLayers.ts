@@ -27,7 +27,7 @@ export interface InfrastructureMapLayers {
     setOilGasCategories: (selection?: Partial<Record<OilGasCategory, boolean>>) => void;
 }
 
-function source(path: string): VectorTileSource {
+function createSource(path: string): VectorTileSource {
     return new VectorTileSource({
         format: new MVT(),
         url: `${API_BASE_URL}/vector-tiles/${path}/{z}/{x}/{y}`,
@@ -55,9 +55,10 @@ export function createInfrastructureMapLayers(): InfrastructureMapLayers {
     let visibleCategories: Set<string> | null = null;
 
     const oilGasInfrastructure = new VectorTileLayer({
-        source: source("oil-gas-infrastructure"),
+        source: createSource("oil-gas-infrastructure"),
         visible: false,
         zIndex: 145,
+
         properties: {
             layerId: "infrastructure-oil-gas",
         },
@@ -91,9 +92,10 @@ export function createInfrastructureMapLayers(): InfrastructureMapLayers {
     });
 
     const oilGasPipelines = new VectorTileLayer({
-        source: source("oil-gas-pipelines"),
+        source: createSource("oil-gas-pipelines"),
         visible: false,
         zIndex: 146,
+
         properties: {
             layerId: "infrastructure-pipelines",
         },
@@ -118,20 +120,23 @@ export function createInfrastructureMapLayers(): InfrastructureMapLayers {
     });
 
     const landfills = new VectorTileLayer({
-        source: source("landfills"),
+        source: createSource("landfills"),
         visible: false,
         zIndex: 147,
+
         properties: {
             layerId: "infrastructure-landfills",
         },
 
         style: (feature) => {
             const geometry = feature.getGeometry()?.getType();
-            const landfill = feature.get("fclass") === "landfill";
+            const isLandfill = feature.get("fclass") === "landfill";
 
-            return landfill && (geometry === "Polygon" || geometry === "MultiPolygon")
-                ? landfillStyle
-                : undefined;
+            if (isLandfill && (geometry === "Polygon" || geometry === "MultiPolygon")) {
+                return landfillStyle;
+            }
+
+            return undefined;
         },
     });
 
@@ -141,8 +146,6 @@ export function createInfrastructureMapLayers(): InfrastructureMapLayers {
         landfills,
 
         setOilGasCategories(selection) {
-            // Если фильтр не передан, сохраняем
-            // совместимость со старым общим переключателем.
             visibleCategories = selection
                 ? new Set(
                       OIL_GAS_CATEGORIES.filter(({ id }) => selection[id] === true).map(
@@ -151,8 +154,11 @@ export function createInfrastructureMapLayers(): InfrastructureMapLayers {
                   )
                 : null;
 
-            // Перерисовываем существующий слой.
-            // MVT-источник и тайлы не пересоздаются.
+            oilGasInfrastructure.set(
+                "visibleCategories",
+                visibleCategories ? [...visibleCategories] : null,
+            );
+
             oilGasInfrastructure.changed();
         },
     };

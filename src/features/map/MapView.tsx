@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Box } from "@chakra-ui/react";
 
 import type { Coordinate } from "ol/coordinate";
+import type BaseLayer from "ol/layer/Base";
 import Map from "ol/Map";
 import Overlay from "ol/Overlay";
 import { unByKey } from "ol/Observable";
@@ -11,7 +12,6 @@ import XYZ from "ol/source/XYZ";
 import { defaults as defaultControls } from "ol/control";
 import { getCenter } from "ol/extent";
 import { fromLonLat, toLonLat, transformExtent } from "ol/proj";
-import type BaseLayer from "ol/layer/Base";
 
 import { getS5PPixelValue } from "../../api/s5p";
 import { getMethaneAnnualPixelValue } from "../../api/methaneAnnual";
@@ -36,15 +36,15 @@ import {
 } from "./plumeRasterLayer";
 import { plumeCoversCoordinate } from "./plumePixelCoverage";
 import { registerPlumeOpacityPreview } from "./plumeOpacityPreview";
+import { pickInfrastructureFeature, type InfrastructureSelection } from "./infrastructureFeature";
 
 import { S5PPixelPopup } from "./S5PPixelPopup";
 import { PlumePixelPopup } from "./PlumePixelPopup";
+import { InfrastructurePopup } from "./InfrastructurePopup";
 import { useMapController } from "./useMapController";
 
-import { pickInfrastructureFeature, type InfrastructureSelection } from "./infrastructureFeature";
-import { InfrastructurePopup } from "./InfrastructurePopup";
-
 const S5P_HIDE_ZOOM = 10;
+const MAP_VIEW_STORAGE_KEY = "geoportal:v1:map-view";
 
 interface MethanePopupState {
     kind: "methane";
@@ -73,6 +73,37 @@ interface InfrastructurePopupState {
 
 type PixelPopupState = MethanePopupState | PlumePopupState | InfrastructurePopupState;
 
+function restoreMapView(view: View): void {
+    try {
+        const raw = window.localStorage.getItem(MAP_VIEW_STORAGE_KEY);
+        if (!raw) return;
+
+        const saved: unknown = JSON.parse(raw);
+
+        if (!saved || typeof saved !== "object") return;
+
+        const state = saved as {
+            center?: unknown;
+            zoom?: unknown;
+        };
+
+        if (
+            !Array.isArray(state.center) ||
+            state.center.length !== 2 ||
+            !state.center.every((value) => typeof value === "number" && Number.isFinite(value)) ||
+            typeof state.zoom !== "number" ||
+            !Number.isFinite(state.zoom)
+        ) {
+            return;
+        }
+
+        view.setCenter(state.center as [number, number]);
+        view.setZoom(Math.min(mapConfig.maxZoom, Math.max(view.getMinZoom(), state.zoom)));
+    } catch {
+        // Некорректное сохранённое состояние не должно ломать карту.
+    }
+}
+
 export function MapView() {
     const mapElementRef = useRef<HTMLDivElement | null>(null);
     const mapRef = useRef<Map | null>(null);
@@ -90,6 +121,9 @@ export function MapView() {
 
     const selectedGroupIdRef = useRef<string | null>(null);
     const pointSourcesEnabledRef = useRef(false);
+    const selectGroupRef = useRef<ReturnType<typeof usePointSources>["selectGroup"]>(
+        () => undefined,
+    );
 
     const { registerMap, setBaseMap, getMethaneAnnualLayerState, getS5PLayerState } =
         useMapController();
@@ -97,7 +131,6 @@ export function MapView() {
     const { enabled, opacity, selectedGroup, focusRequest, selectedPlume, selectGroup } =
         usePointSources();
 
-    const selectGroupRef = useRef(selectGroup);
     const [popup, setPopup] = useState<PixelPopupState | null>(null);
 
     useEffect(() => {
@@ -149,8 +182,22 @@ export function MapView() {
             }
         }
 
-        const groupLayers = createPlumeGroupLayers();
+        restoreMapView(view);
 
+        const saveViewKey = map.on("moveend", () => {
+            const center = view.getCenter();
+            const zoom = view.getZoom();
+
+            if (!center || zoom === undefined) return;
+
+            try {
+                window.localStorage.setItem(MAP_VIEW_STORAGE_KEY, JSON.stringify({ center, zoom }));
+            } catch {
+                // Ошибки browser storage игнорируем.
+            }
+        });
+
+        const groupLayers = createPlumeGroupLayers();
         groupLayersRef.current = groupLayers;
 
         map.addLayer(groupLayers.polygons);
@@ -307,109 +354,114 @@ export function MapView() {
             }
         };
 
+        let clickSequence = 0;
+
         const clickKey = map.on("singleclick", (event) => {
-            const plume = selectedPlumeRef.current;
-            const raster = plumeRasterRef.current;
-            const layers = groupLayersRef.current;
+            const sequence = ++clickSequence;
 
-            const [lon, lat] = toLonLat(event.coordinate);
+            void (async () => {
+                const plume = selectedPlumeRef.current;
+                const raster = plumeRasterRef.current;
+                const layers = groupLayersRef.current;
 
-            const infrastructure = pickInfrastructureFeature(map, event.pixel);
+                const [lon, lat] = toLonLat(event.coordinate);
 
-            if (infrastructure) {
-                requestRef.current?.abort();
+                // Сначала проверяем инфраструктуру.
+                // Функция намеренно игнорирует трубопроводы.
+                const infrastructure = await pickInfrastructureFeature(map, event.pixel);
 
-                overlay.setPosition(event.coordinate);
+                if (sequence !== clickSequence) return;
 
-                setPopup({
-                    kind: "infrastructure",
-                    selection: infrastructure,
-                });
+                if (infrastructure) {
+                    requestRef.current?.abort();
 
-                return;
-            }
+                    overlay.setPosition(event.coordinate);
 
-            const rasterActive =
-                pointSourcesEnabledRef.current &&
-                Boolean(plume?.uid) &&
-                Boolean(raster?.getVisible()) &&
-                (raster?.getOpacity() ?? 0) > 0;
-
-            if (rasterActive && plume && raster) {
-                const coverage = plumeCoversCoordinate(plume, lon, lat);
-
-                // Проверяем непрозрачный пиксель самого растра,
-                // если браузер и CORS позволяют прочитать RGBA.
-                let hasRasterPixel = false;
-
-                try {
-                    const data = raster.getData(event.pixel);
-
-                    hasRasterPixel =
-                        data !== null &&
-                        !(data instanceof DataView) &&
-                        data.length >= 4 &&
-                        Number(data[3]) > 0;
-                } catch {
-                    // Используем геометрию как резервный способ.
-                }
-
-                // Полигон текущей группировки не должен
-                // перехватывать клик у выбранного шлейфа.
-                const hitSelectedGroupPolygon = layers
-                    ? Boolean(
-                          map.forEachFeatureAtPixel(
-                              event.pixel,
-                              (feature) => {
-                                  const id = feature.get("id") ?? feature.getId();
-
-                                  return id != null && String(id) === selectedGroupIdRef.current;
-                              },
-                              {
-                                  hitTolerance: 2,
-                                  layerFilter: (layer) => layer === layers.polygons,
-                              },
-                          ),
-                      )
-                    : false;
-
-                if (hasRasterPixel || coverage === true || hitSelectedGroupPolygon) {
-                    void inspectPlumePixel(plume, event.coordinate, lon, lat);
+                    setPopup({
+                        kind: "infrastructure",
+                        selection: infrastructure,
+                    });
 
                     return;
                 }
-            }
 
-            // Обрабатываем кластеры и другие группировки.
-            if (
-                layers &&
-                handlePlumeGroupClick(map, event.pixel, event.coordinate, layers, (group) => {
-                    // Повторный клик по той же группировке
-                    // не должен снова запускать фокусировку.
-                    if (group.id !== selectedGroupIdRef.current) {
-                        selectGroupRef.current(group);
+                const rasterActive =
+                    pointSourcesEnabledRef.current &&
+                    Boolean(plume?.uid) &&
+                    Boolean(raster?.getVisible()) &&
+                    (raster?.getOpacity() ?? 0) > 0;
+
+                if (rasterActive && plume && raster) {
+                    const coverage = plumeCoversCoordinate(plume, lon, lat);
+
+                    let hasRasterPixel = false;
+
+                    try {
+                        const data = raster.getData(event.pixel);
+
+                        hasRasterPixel =
+                            data !== null &&
+                            !(data instanceof DataView) &&
+                            data.length >= 4 &&
+                            Number(data[3]) > 0;
+                    } catch {
+                        // При невозможности прочитать RGBA используем геометрию.
                     }
-                })
-            ) {
-                clearPopup();
-                return;
-            }
 
-            // Если охват шлейфа неизвестен, даём API
-            // определить, есть ли значение пикселя.
-            if (rasterActive && plume && plumeCoversCoordinate(plume, lon, lat) === null) {
-                void inspectPlumePixel(plume, event.coordinate, lon, lat);
+                    const hitSelectedGroupPolygon = layers
+                        ? Boolean(
+                              map.forEachFeatureAtPixel(
+                                  event.pixel,
+                                  (feature) => {
+                                      const id = feature.get("id") ?? feature.getId();
 
-                return;
-            }
+                                      return (
+                                          id != null && String(id) === selectedGroupIdRef.current
+                                      );
+                                  },
+                                  {
+                                      hitTolerance: 2,
+                                      layerFilter: (layer) => layer === layers.polygons,
+                                  },
+                              ),
+                          )
+                        : false;
 
-            // На детальном масштабе площадные слои скрыты.
-            if (pointSourcesEnabledRef.current && (map.getView().getZoom() ?? 0) >= 10) {
-                clearPopup();
-                return;
-            }
+                    if (hasRasterPixel || coverage === true || hitSelectedGroupPolygon) {
+                        void inspectPlumePixel(plume, event.coordinate, lon, lat);
+                        return;
+                    }
+                }
 
-            void inspectMethanePixel(event.coordinate);
+                // Кластер либо полигон группировки.
+                if (
+                    layers &&
+                    handlePlumeGroupClick(map, event.pixel, event.coordinate, layers, (group) => {
+                        if (group.id !== selectedGroupIdRef.current) {
+                            selectGroupRef.current(group);
+                        }
+                    })
+                ) {
+                    clearPopup();
+                    return;
+                }
+
+                // При неизвестном охвате разрешаем серверу проверить пиксель.
+                if (rasterActive && plume && plumeCoversCoordinate(plume, lon, lat) === null) {
+                    void inspectPlumePixel(plume, event.coordinate, lon, lat);
+                    return;
+                }
+
+                if (
+                    pointSourcesEnabledRef.current &&
+                    (map.getView().getZoom() ?? 0) >= S5P_HIDE_ZOOM
+                ) {
+                    clearPopup();
+                    return;
+                }
+
+                void inspectMethanePixel(event.coordinate);
+            })();
         });
 
         const pointerKey = map.on("pointermove", (event) => {
@@ -420,19 +472,30 @@ export function MapView() {
 
             const layers = groupLayersRef.current;
 
-            const hovered = layers
-                ? map.hasFeatureAtPixel(event.pixel, {
-                      layerFilter: (layer) => layer === layers.cluster || layer === layers.polygons,
-                      hitTolerance: 6,
-                  })
-                : false;
+            const hovered = map.hasFeatureAtPixel(event.pixel, {
+                hitTolerance: 8,
+                layerFilter: (layer) => {
+                    if (!layer.getVisible()) return false;
+
+                    const layerId = layer.get("layerId");
+
+                    return (
+                        layer === layers?.cluster ||
+                        layer === layers?.polygons ||
+                        layerId === "infrastructure-oil-gas" ||
+                        layerId === "infrastructure-landfills"
+                    );
+                },
+            });
 
             element.style.cursor = hovered ? "pointer" : "";
         });
 
         return () => {
+            clickSequence += 1;
             requestRef.current?.abort();
 
+            unByKey(saveViewKey);
             unByKey(clickKey);
             unByKey(pointerKey);
 
@@ -450,6 +513,7 @@ export function MapView() {
         };
     }, [registerMap, getMethaneAnnualLayerState, getS5PLayerState]);
 
+    // Скрытие S5P при увеличении масштаба, если включены точечные источники.
     useEffect(() => {
         const map = mapRef.current;
         if (!map) return;
@@ -468,10 +532,8 @@ export function MapView() {
             }
         };
 
-        // Уже добавленные растровые слои.
         map.getLayers().forEach(applyZoomLimit);
 
-        // Слои, которые могут быть добавлены позже.
         const key = map.getLayers().on("add", (event) => {
             applyZoomLimit(event.element);
         });
@@ -481,12 +543,11 @@ export function MapView() {
         };
     }, [enabled]);
 
-    // Кластерные маркеры и полигоны всегда имеют opacity 100%.
     useEffect(() => {
         groupLayersRef.current?.setEnabled(enabled, 100);
     }, [enabled]);
 
-    // Центры группировок загружаем один раз.
+    // Группировки загружаются один раз.
     useEffect(() => {
         if (!enabled || groupsLoadedRef.current) return;
 
@@ -556,13 +617,12 @@ export function MapView() {
             layer.set("plumeKey", selectedPlume.key);
         }
 
-        // Выше полигонов и кластеров (у них zIndex 155).
         layer.setZIndex(1000);
         layer.setOpacity(Math.max(0, Math.min(1, opacity / 100)));
         layer.setVisible(true);
     }, [enabled, opacity, selectedPlume]);
 
-    // Плавная прозрачность без обновления Context на каждом шаге.
+    // Слайдер прозрачности обновляет растр без рендеринга React.
     useEffect(() => {
         return registerPlumeOpacityPreview((value) => {
             const layer = plumeRasterRef.current;
@@ -575,6 +635,7 @@ export function MapView() {
 
     useEffect(() => {
         const map = mapRef.current;
+
         if (!map || !enabled || !selectedPlume) return;
 
         const focused = focusMapOnPlume(map, selectedPlume);
@@ -584,7 +645,6 @@ export function MapView() {
         }
     }, [enabled, selectedPlume, selectedGroup?.coordinates]);
 
-    // Старый popup закрывается при переключении наблюдений.
     useEffect(() => {
         requestRef.current?.abort();
         overlayRef.current?.setPosition(undefined);

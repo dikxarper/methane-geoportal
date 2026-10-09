@@ -3,7 +3,6 @@ import { Check } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 import { ui } from "../../../theme/tokens";
-
 import { baseMaps, type BaseMapId } from "../config";
 
 interface BaseMapMenuProps {
@@ -18,7 +17,7 @@ export function BaseMapMenu({ value, onChange }: BaseMapMenuProps) {
         <Box
             position="absolute"
             right="42px"
-            bottom="0"
+            top="0"
             width="164px"
             overflow="hidden"
             bg={ui.colors.menu}

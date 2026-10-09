@@ -21,6 +21,7 @@ export const en = {
         areaFlux: "Area fluxes",
         pointSources: "Point sources",
         infrastructure: "Infrastructure",
+        admin: "Administrative layers",
     },
 
     areaFlux: {
@@ -34,6 +35,7 @@ export const en = {
             loadError: "Failed to load Sentinel-5P data.",
             datesLoadError: "Failed to load Sentinel-5P dates.",
         },
+
         annualMethane: {
             title: "Annual methane",
             description: "Annual Sentinel-5P methane average",
@@ -101,11 +103,13 @@ export const en = {
         title: "Infrastructure",
         oilGas: "Oil and gas",
         other: "Other",
+
         layers: {
             oilGasInfrastructure: "Oil and gas facilities",
             oilGasPipelines: "Oil and gas pipelines",
             landfills: "Landfills",
         },
+
         categories: {
             flaring: "Natural gas flaring",
             offshore: "Offshore platforms",
@@ -114,11 +118,13 @@ export const en = {
             processing: "Gathering and processing",
             lng: "LNG facilities",
         },
+
         hints: {
             refineries: "Crude oil refineries",
             lng: "Liquefied natural gas facilities",
             landfills: "Municipal solid waste landfills",
         },
+
         popup: {
             operator: "Operator",
             country: "Country",
@@ -172,6 +178,7 @@ export const en = {
             error: "Failed to create account.",
         },
     },
+
     pointSources: {
         title: "Point sources",
         groups: "Plume groups",
@@ -308,6 +315,7 @@ export const en = {
             earlier: "Earlier",
             later: "Later",
             discreteAxisHint: "Days are evenly spaced; distances do not represent elapsed time.",
+
             help: {
                 button: "How to read the chart",
                 title: "Understanding the emission chart",
@@ -344,6 +352,7 @@ export const en = {
                 clickText:
                     "When a period contains one quantified plume, it is selected on the map. Otherwise, the timeline is filtered to that period.",
             },
+
             scaleLinearHint: "Linear scale: distances are proportional to methane emission rates.",
             scaleLogHint:
                 "Logarithmic log(1 + x) scale: helps distinguish small values alongside large ones.",

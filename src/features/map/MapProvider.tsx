@@ -8,13 +8,13 @@ import XYZ from "ol/source/XYZ";
 import { getS5PTileUrl } from "../../api/s5p";
 import { getMethaneAnnualTileUrl } from "../../api/methaneAnnual";
 import { useAppTheme } from "../../hooks/useAppTheme";
+import { useStoredState } from "../../hooks/useStoredState";
 
 import { mapConfig, type BaseMapId } from "./config";
 import {
     createAdministrativeBoundaryLayers,
     type AdministrativeBoundaryLayers,
 } from "./adminBoundaries";
-
 import {
     createInfrastructureMapLayers,
     type InfrastructureMapLayers,
@@ -63,28 +63,37 @@ const DEFAULT_INFRASTRUCTURE_OPTIONS: InfrastructureLayersOptions = {
 
 export function MapProvider({ children }: { children: ReactNode }) {
     const mapRef = useRef<Map | null>(null);
+
     const s5pLayerRef = useRef<TileLayer<XYZ> | null>(null);
     const s5pOptionsRef = useRef<S5PLayerOptions>(DEFAULT_S5P_OPTIONS);
+
     const methaneAnnualLayerRef = useRef<TileLayer<XYZ> | null>(null);
     const methaneAnnualOptionsRef = useRef<MethaneAnnualLayerOptions>(
         DEFAULT_METHANE_ANNUAL_OPTIONS,
     );
+
     const administrativeLayersRef = useRef<AdministrativeBoundaryLayers | null>(null);
+
     const administrativeLayersRequestRef = useRef<Promise<AdministrativeBoundaryLayers> | null>(
         null,
     );
+
     const administrativeOptionsRef = useRef<AdministrativeLayersOptions>(
         DEFAULT_ADMINISTRATIVE_LAYERS_OPTIONS,
     );
 
     const infrastructureLayersRef = useRef<InfrastructureMapLayers | null>(null);
+
     const infrastructureOptionsRef = useRef<InfrastructureLayersOptions>(
         DEFAULT_INFRASTRUCTURE_OPTIONS,
     );
 
     const { theme } = useAppTheme();
-    const [baseMap, setBaseMapState] = useState<BaseMapId>("custom");
+
+    const [baseMap, setBaseMapState] = useStoredState<BaseMapId>("base-map", "custom");
+
     const [activeMethaneLayer, setActiveMethaneLayer] = useState<ActiveMethaneLayer>(null);
+
     const [activeLegendStyle, setActiveLegendStyle] = useState<LegendStyle>("gradient");
 
     const baseMapRef = useRef(baseMap);
@@ -103,9 +112,7 @@ export function MapProvider({ children }: { children: ReactNode }) {
             map.getLayers().forEach((layer) => {
                 const layerBaseMapId = layer.get("baseMapId") as BaseMapId | undefined;
 
-                if (!layerBaseMapId) {
-                    return;
-                }
+                if (!layerBaseMapId) return;
 
                 if (selectedBaseMap !== "custom") {
                     layer.setVisible(layerBaseMapId === selectedBaseMap);
@@ -156,13 +163,10 @@ export function MapProvider({ children }: { children: ReactNode }) {
 
             s5pLayerRef.current = layer;
             map.addLayer(layer);
-
             return;
         }
 
-        const currentUid = layer.get("s5pUid");
-
-        if (currentUid !== uid) {
+        if (layer.get("s5pUid") !== uid) {
             layer.setSource(
                 new XYZ({
                     url: getS5PTileUrl(uid),
@@ -190,11 +194,14 @@ export function MapProvider({ children }: { children: ReactNode }) {
         }
 
         const normalizedOpacity = Math.max(0, Math.min(1, opacity));
+
         let layer = methaneAnnualLayerRef.current;
 
         if (!layer) {
             layer = new TileLayer({
-                source: new XYZ({ url: getMethaneAnnualTileUrl(uid) }),
+                source: new XYZ({
+                    url: getMethaneAnnualTileUrl(uid),
+                }),
                 visible,
                 opacity: normalizedOpacity,
                 zIndex: 90,
@@ -210,7 +217,11 @@ export function MapProvider({ children }: { children: ReactNode }) {
         }
 
         if (layer.get("methaneAnnualUid") !== uid) {
-            layer.setSource(new XYZ({ url: getMethaneAnnualTileUrl(uid) }));
+            layer.setSource(
+                new XYZ({
+                    url: getMethaneAnnualTileUrl(uid),
+                }),
+            );
             layer.set("methaneAnnualUid", uid);
         }
 
@@ -226,8 +237,10 @@ export function MapProvider({ children }: { children: ReactNode }) {
             ) => {
                 layers.country.setVisible(layerOptions.countryVisible);
                 layers.country.setOpacity(Math.max(0, Math.min(1, layerOptions.countryOpacity)));
+
                 layers.regions.setVisible(layerOptions.regionsVisible);
                 layers.regions.setOpacity(Math.max(0, Math.min(1, layerOptions.regionsOpacity)));
+
                 layers.districts.setVisible(layerOptions.districtsVisible);
                 layers.districts.setOpacity(
                     Math.max(0, Math.min(1, layerOptions.districtsOpacity)),
@@ -252,9 +265,11 @@ export function MapProvider({ children }: { children: ReactNode }) {
                     }
 
                     administrativeLayersRef.current = layers;
+
                     map.addLayer(layers.districts);
                     map.addLayer(layers.regions);
                     map.addLayer(layers.country);
+
                     apply(layers, administrativeOptionsRef.current);
                 })
                 .catch(() => {
@@ -272,9 +287,7 @@ export function MapProvider({ children }: { children: ReactNode }) {
                 const hasEnabledLayers =
                     options.oilGasInfrastructure || options.oilGasPipelines || options.landfills;
 
-                if (!hasEnabledLayers) {
-                    return;
-                }
+                if (!hasEnabledLayers) return;
 
                 layers = createInfrastructureMapLayers();
                 infrastructureLayersRef.current = layers;
@@ -310,8 +323,11 @@ export function MapProvider({ children }: { children: ReactNode }) {
             applyBaseMapVisibility(map, baseMapRef.current, themeRef.current);
 
             applyS5PLayer(map, s5pOptionsRef.current);
+
             applyMethaneAnnualLayer(map, methaneAnnualOptionsRef.current);
+
             applyAdministrativeLayers(map, administrativeOptionsRef.current);
+
             applyInfrastructureLayers(map, infrastructureOptionsRef.current);
         },
         [
@@ -326,9 +342,7 @@ export function MapProvider({ children }: { children: ReactNode }) {
     useEffect(() => {
         const map = mapRef.current;
 
-        if (!map) {
-            return;
-        }
+        if (!map) return;
 
         applyBaseMapVisibility(map, baseMap, theme);
     }, [baseMap, theme, applyBaseMapVisibility]);
@@ -336,9 +350,7 @@ export function MapProvider({ children }: { children: ReactNode }) {
     const zoomIn = useCallback(() => {
         const view = mapRef.current?.getView();
 
-        if (!view) {
-            return;
-        }
+        if (!view) return;
 
         const zoom = view.getZoom() ?? mapConfig.minZoom;
 
@@ -351,9 +363,7 @@ export function MapProvider({ children }: { children: ReactNode }) {
     const zoomOut = useCallback(() => {
         const view = mapRef.current?.getView();
 
-        if (!view) {
-            return;
-        }
+        if (!view) return;
 
         const zoom = view.getZoom() ?? mapConfig.minZoom;
 
@@ -364,17 +374,11 @@ export function MapProvider({ children }: { children: ReactNode }) {
     }, []);
 
     const resetView = useCallback(() => {
-        const view = mapRef.current?.getView();
+        const map = mapRef.current;
+        const view = map?.getView();
+        const size = map?.getSize();
 
-        if (!view) {
-            return;
-        }
-
-        const size = mapRef.current?.getSize();
-
-        if (!size) {
-            return;
-        }
+        if (!view || !size) return;
 
         const homeExtent = transformExtent(
             mapConfig.home.extent,
@@ -388,13 +392,17 @@ export function MapProvider({ children }: { children: ReactNode }) {
         });
     }, []);
 
-    const setBaseMap = useCallback((id: BaseMapId) => {
-        setBaseMapState(id);
-    }, []);
+    const setBaseMap = useCallback(
+        (id: BaseMapId) => {
+            setBaseMapState(id);
+        },
+        [setBaseMapState],
+    );
 
     const updateS5PLayer = useCallback(
         (options: S5PLayerOptions) => {
             s5pOptionsRef.current = options;
+
             setActiveMethaneLayer((current) =>
                 options.visible ? "daily" : current === "daily" ? null : current,
             );
@@ -405,22 +413,19 @@ export function MapProvider({ children }: { children: ReactNode }) {
 
             const map = mapRef.current;
 
-            if (!map) {
-                return;
+            if (map) {
+                applyS5PLayer(map, options);
             }
-
-            applyS5PLayer(map, options);
         },
         [applyS5PLayer],
     );
 
-    const getS5PLayerState = useCallback(() => {
-        return s5pOptionsRef.current;
-    }, []);
+    const getS5PLayerState = useCallback(() => s5pOptionsRef.current, []);
 
     const updateMethaneAnnualLayer = useCallback(
         (options: MethaneAnnualLayerOptions) => {
             methaneAnnualOptionsRef.current = options;
+
             setActiveMethaneLayer((current) =>
                 options.visible ? "annual" : current === "annual" ? null : current,
             );
@@ -436,9 +441,7 @@ export function MapProvider({ children }: { children: ReactNode }) {
         [applyMethaneAnnualLayer],
     );
 
-    const getMethaneAnnualLayerState = useCallback(() => {
-        return methaneAnnualOptionsRef.current;
-    }, []);
+    const getMethaneAnnualLayerState = useCallback(() => methaneAnnualOptionsRef.current, []);
 
     const updateAdministrativeLayers = useCallback(
         (options: AdministrativeLayersOptions) => {
@@ -484,7 +487,6 @@ export function MapProvider({ children }: { children: ReactNode }) {
                 activeLegendStyle,
 
                 updateAdministrativeLayers,
-
                 updateInfrastructureLayers,
             }}
         >

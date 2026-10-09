@@ -1,11 +1,11 @@
-import { useState } from "react";
+import { useEffect } from "react";
 import { Box, Flex, Text, IconButton, Portal, Tooltip } from "@chakra-ui/react";
 import { CircleHelp } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
+import { useStoredState } from "../../hooks/useStoredState";
 import { LayerToggle } from "../../components/ui/LayerToggle";
 import { PanelHeader } from "../../components/ui/PanelHeader";
-import { SectionTitle } from "../../components/ui/SectionTitle";
 import { ui } from "../../theme/tokens";
 
 import { useMapController } from "../map/useMapController";
@@ -107,16 +107,33 @@ function LayerRow({ label, color, shape, checked, hint, onChange }: LayerRowProp
     );
 }
 
+function InfrastructureSectionTitle({ children }: { children: React.ReactNode }) {
+    return (
+        <Text
+            mb="7px"
+            fontSize="11px"
+            fontWeight="600"
+            textTransform="uppercase"
+            letterSpacing="0.04em"
+            color={ui.colors.textMuted}
+        >
+            {children}
+        </Text>
+    );
+}
+
 export function InfrastructurePanel() {
-    const { t } = useTranslation();
+    const { t, i18n } = useTranslation();
     const { updateInfrastructureLayers } = useMapController();
 
-    const [layers, setLayers] = useState<InfrastructureLayersOptions>(INITIAL);
+    const [layers, setLayers] = useStoredState<InfrastructureLayersOptions>(
+        "infrastructure-layers",
+        INITIAL,
+    );
 
-    const update = (next: InfrastructureLayersOptions) => {
-        setLayers(next);
-        updateInfrastructureLayers(next);
-    };
+    useEffect(() => {
+        updateInfrastructureLayers(layers);
+    }, [layers, updateInfrastructureLayers]);
 
     const toggleCategory = (category: OilGasCategory, checked: boolean) => {
         const oilGasCategories = {
@@ -124,7 +141,7 @@ export function InfrastructurePanel() {
             [category]: checked,
         };
 
-        update({
+        setLayers({
             ...layers,
             oilGasCategories,
             oilGasInfrastructure: Object.values(oilGasCategories).some(Boolean),
@@ -132,10 +149,24 @@ export function InfrastructurePanel() {
     };
 
     const toggleOther = (key: "oilGasPipelines" | "landfills", checked: boolean) => {
-        update({
+        setLayers({
             ...layers,
             [key]: checked,
         });
+    };
+
+    const english = i18n.resolvedLanguage?.startsWith("en") ?? false;
+
+    const getCategoryHint = (category: OilGasCategory): string | undefined => {
+        if (category === "LNG FACILITIES") {
+            return t("infrastructure.hints.lng");
+        }
+
+        if (!english && category === "CRUDE OIL REFINERIES") {
+            return t("infrastructure.hints.refineries");
+        }
+
+        return undefined;
     };
 
     return (
@@ -143,7 +174,9 @@ export function InfrastructurePanel() {
             <PanelHeader>{t("infrastructure.title")}</PanelHeader>
 
             <Box mt="12px">
-                <SectionTitle>{t("infrastructure.oilGas")}</SectionTitle>
+                <InfrastructureSectionTitle>
+                    {t("infrastructure.oilGas")}
+                </InfrastructureSectionTitle>
 
                 <Box
                     overflow="hidden"
@@ -159,13 +192,7 @@ export function InfrastructurePanel() {
                             color={category.color}
                             shape="point"
                             checked={layers.oilGasCategories?.[category.id] === true}
-                            hint={
-                                category.id === "CRUDE OIL REFINERIES"
-                                    ? t("infrastructure.hints.refineries")
-                                    : category.id === "LNG FACILITIES"
-                                      ? t("infrastructure.hints.lng")
-                                      : undefined
-                            }
+                            hint={getCategoryHint(category.id)}
                             onChange={(checked) => toggleCategory(category.id, checked)}
                         />
                     ))}
@@ -181,7 +208,7 @@ export function InfrastructurePanel() {
             </Box>
 
             <Box mt="16px">
-                <SectionTitle>{t("infrastructure.other")}</SectionTitle>
+                <InfrastructureSectionTitle>{t("infrastructure.other")}</InfrastructureSectionTitle>
 
                 <Box
                     overflow="hidden"
@@ -195,7 +222,7 @@ export function InfrastructurePanel() {
                         color={LANDFILL_COLOR}
                         shape="polygon"
                         checked={layers.landfills}
-                        hint={t("infrastructure.hints.landfills")}
+                        hint={english ? undefined : t("infrastructure.hints.landfills")}
                         onChange={(checked) => toggleOther("landfills", checked)}
                     />
                 </Box>
